@@ -69,6 +69,16 @@ object AdvancedReportExporter {
             put("afterEvidence", result.afterEvidence)
             put("verifiedAtEpochMs", result.verifiedAtEpochMs)
         } }))
+        put("customPolicyEvaluations", JSONArray(snapshot.customPolicyEvaluations.map { evaluation -> JSONObject().apply {
+            put("id", evaluation.policy.id)
+            put("title", evaluation.policy.title)
+            put("description", evaluation.policy.description)
+            put("ruleType", evaluation.policy.ruleType.name)
+            evaluation.policy.port?.let { put("port", it) }
+            put("enabled", evaluation.policy.enabled)
+            put("passed", evaluation.passed)
+            put("evidence", evaluation.evidence)
+        } }))
     }
 
     fun csv(snapshot: AuditSnapshot): String = buildString {
