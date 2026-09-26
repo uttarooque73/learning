@@ -478,3 +478,18 @@ For every feature:
 - Security Intelligence: asset classification, limited OUI vendor candidates, service fingerprint evidence, network topology model, DNS security analysis, risk trend points, and evidence-backed vulnerability candidates.
 - Local security hardening primitives: Android Keystore AES-GCM secure storage, app-lock policy model, and security notification helper.
 - Feature screens are intentionally separated from the Overview dashboard; Overview is limited to posture and quick actions.
+
+
+## Remaining feature implementation completed
+
+The latest implementation adds:
+- scheduled WorkManager-based inventory monitoring with configurable 1h/6h/24h intervals and change notifications
+- device identity inference from observed services and hostname evidence
+- NVD keyword-based CVE discovery explicitly presented as unverified candidates
+- persistent custom security policies with validation
+- persistent app-protection policy controls
+- audit ZIP summary importer foundation
+- tests for the new identity, policy, and scheduling primitives
+- dedicated Advanced Security controls rather than adding these controls to the Overview dashboard
+
+Scheduled monitoring remains bounded to the existing device/service discovery catalog and does not perform credential attacks, exploitation, or remote modification.
