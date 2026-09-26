@@ -341,7 +341,7 @@ Remaining release work:
 The following backlog is the next product-level roadmap. Each feature is implemented, tested, documented, and verified before moving to the next item.
 
 ### Feature 1 — Android Device Security Audit
-**Status: In progress**
+**Status: Implemented**
 
 - Android version and SDK information.
 - Android security patch level.
@@ -354,7 +354,7 @@ The following backlog is the next product-level roadmap. Each feature is impleme
 Documentation: `docs/features/01-android-device-security-audit.md`
 
 ### Feature 2 — Installed Application Security Audit
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - Installed application inventory.
 - Dangerous/runtime permission review where Android permits it.
@@ -366,7 +366,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Per-application evidence and remediation guidance.
 
 ### Feature 3 — DNS Security Audit
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - Active DNS servers.
 - Private DNS state.
@@ -375,7 +375,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Evidence-backed DNS findings.
 
 ### Feature 4 — Gateway Security Audit
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - Gateway identity tracking.
 - Gateway service exposure.
@@ -384,7 +384,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Evidence and remediation guidance.
 
 ### Feature 5 — TLS/HTTPS Security Analyzer
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - TLS reachability.
 - Certificate validity.
@@ -394,7 +394,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Safe HTTP-to-HTTPS checks.
 
 ### Feature 6 — HTTP Security Analyzer
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - HTTPS redirect behavior.
 - HSTS.
@@ -404,7 +404,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Safe cookie security indicators.
 
 ### Feature 7 — Wi-Fi Trust & Change Detection
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - SSID/BSSID history.
 - Gateway identity history.
@@ -413,7 +413,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Explicit uncertainty; never claim a rogue AP from one signal.
 
 ### Feature 8 — Remediation Center
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - Central remediation queue.
 - Android Settings shortcuts where supported.
@@ -422,7 +422,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Remediation history.
 
 ### Feature 9 — Security Timeline
-**Status: Planned**
+**Status: Implemented — foundation**
 
 - Device changes.
 - Service changes.
@@ -431,7 +431,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Remediation and verification events.
 
 ### Feature 10 — Advanced Reporting
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - JSON export.
 - CSV export.
@@ -440,7 +440,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Executive and technical report views.
 
 ### Feature 11 — Configurable Security Policies
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - User-defined checks.
 - Custom thresholds.
@@ -448,7 +448,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Policy evaluation history.
 
 ### Feature 12 — Security Learning Mode
-**Status: Planned**
+**Status: Implemented — MVP**
 
 - Technical explanations.
 - Why the issue matters.
