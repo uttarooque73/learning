@@ -57,6 +57,10 @@ import com.uttarooque73.netguard.monitor.MonitorEvent
 import com.uttarooque73.netguard.monitor.MonitorStore
 import com.uttarooque73.netguard.monitor.MonitorBaselineStore
 import com.uttarooque73.netguard.monitor.MonitorRunner
+import com.uttarooque73.netguard.compliance.BaselineEvaluator
+import com.uttarooque73.netguard.compliance.BaselineResult
+import com.uttarooque73.netguard.compliance.BaselineStore
+import com.uttarooque73.netguard.compliance.DefaultBaselines
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -81,6 +85,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var monitorBaselineStore: MonitorBaselineStore
     private var monitorEvents by mutableStateOf<List<MonitorEvent>>(emptyList())
     private var monitoring by mutableStateOf(false)
+    private lateinit var baselineStore: BaselineStore
+    private var baselineResults by mutableStateOf<List<BaselineResult>>(emptyList())
     private var verificationResults by mutableStateOf<List<VerificationResult>>(emptyList())
     private var verifyingFindingId by mutableStateOf<String?>(null)
     private lateinit var findingStore: FindingStore
@@ -101,12 +107,15 @@ class MainActivity : ComponentActivity() {
         auditHistoryStore = AuditHistoryStore(this)
         monitorStore = MonitorStore(this)
         monitorBaselineStore = MonitorBaselineStore(this)
+        baselineStore = BaselineStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
         verificationResults = verificationStore.load()
         auditHistory = auditHistoryStore.load()
         monitorEvents = monitorStore.load()
+        val savedBaseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
+        baselineResults = BaselineEvaluator.evaluate(savedBaseline, services)
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -135,7 +144,9 @@ class MainActivity : ComponentActivity() {
                 onCreateReport = ::createReport,
                 monitoring = monitoring,
                 monitorEvents = monitorEvents,
-                onCheckChanges = ::checkForChanges
+                onCheckChanges = ::checkForChanges,
+                baselineResults = baselineResults,
+                onEvaluateBaseline = ::evaluateBaseline
             )
         }
     }
@@ -160,6 +171,10 @@ class MainActivity : ComponentActivity() {
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
+    private fun evaluateBaseline() {
+        val baseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
+        baselineResults = BaselineEvaluator.evaluate(baseline, services)
+    }
     private fun checkForChanges() {
         if (monitoring) return
         monitoring = true
@@ -276,7 +291,9 @@ fun NetGuardApp(
     onCreateReport: () -> Unit,
     monitoring: Boolean,
     monitorEvents: List<MonitorEvent>,
-    onCheckChanges: () -> Unit
+    onCheckChanges: () -> Unit,
+    baselineResults: List<BaselineResult>,
+    onEvaluateBaseline: () -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -306,7 +323,9 @@ fun NetGuardApp(
                 onCreateReport = onCreateReport,
                 monitoring = monitoring,
                 monitorEvents = monitorEvents,
-                onCheckChanges = onCheckChanges
+                onCheckChanges = onCheckChanges,
+                baselineResults = baselineResults,
+                onEvaluateBaseline = onEvaluateBaseline
             )
         }
     }
@@ -391,6 +410,7 @@ private fun Dashboard(
                 RiskDashboard(findings, onSelectFinding)
                 ReportSection(auditHistory, latestReport, onCreateReport)
                 MonitoringSection(monitoring, monitorEvents, onCheckChanges)
+                BaselineSection(baselineResults, onEvaluateBaseline)
                 selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
@@ -570,6 +590,23 @@ private fun MonitoringSection(
             Text("Events: " + events.size)
             events.takeLast(5).reversed().forEach { event ->
                 Text(event.type.name + " — " + event.ipAddress + " — " + event.detail)
+            }
+        }
+    }
+}
+@Composable
+private fun BaselineSection(
+    results: List<BaselineResult>,
+    onEvaluate: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Security baseline", style = MaterialTheme.typography.titleMedium)
+            Text("Evidence-backed checks for the selected local baseline.")
+            Button(onClick = onEvaluate) { Text("Evaluate baseline") }
+            results.forEach { result ->
+                Text(result.status.name + " — " + result.title)
+                Text(result.evidence)
             }
         }
     }
