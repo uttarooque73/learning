@@ -38,3 +38,8 @@ The current implementation also includes:
 - Security Learning Mode
 
 See [docs/SECURITY_FEATURES.md](docs/SECURITY_FEATURES.md) and [plan.md](plan.md) for scope and limitations.
+
+
+### Modern feature navigation
+
+NetGuard now separates security capabilities into dedicated screens instead of placing the full product on the dashboard. The navigation includes discovery, service inventory, security intelligence, findings, remediation, monitoring, baseline/compliance, mobile security, Wi-Fi trust, web security, policies, timeline, reports, administration, learning, and advanced analysis.
