@@ -117,6 +117,11 @@ import com.uttarooque73.netguard.ui.PolicyFeatureScreen
 import com.uttarooque73.netguard.ui.TimelineFeatureScreen
 import com.uttarooque73.netguard.features.timeline.SecurityTimelineEvent
 import com.uttarooque73.netguard.features.timeline.SecurityTimelineStore
+import com.uttarooque73.netguard.features.policy.CustomPolicy
+import com.uttarooque73.netguard.features.policy.CustomPolicyStore
+import com.uttarooque73.netguard.monitor.ScheduledMonitorConfigStore
+import com.uttarooque73.netguard.monitor.ScheduledMonitorScheduler
+import com.uttarooque73.netguard.security.AppLockPolicyStore
 
 class MainActivity : ComponentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
@@ -1108,13 +1113,96 @@ private fun AdvancedSecuritySection(
     onExportReport: (String) -> Unit,
     timelineEvents: List<SecurityTimelineEvent>
 ) {
-    var url by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scheduledStore = remember { ScheduledMonitorConfigStore(context) }
+    val lockStore = remember { AppLockPolicyStore(context) }
+    val customStore = remember { CustomPolicyStore(context) }
+    var scheduled by remember { mutableStateOf(scheduledStore.load()) }
+    var lockPolicy by remember { mutableStateOf(lockStore.load()) }
+    var customPolicies by remember { mutableStateOf(customStore.load()) }
+    var customId by remember { mutableStateOf("") }
+    var customTitle by remember { mutableStateOf("") }
+    var customDescription by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Advanced Security", style = MaterialTheme.typography.headlineSmall)
-        Text("Application, DNS, gateway, Wi-Fi trust, web security, policy, reporting and learning capabilities.")
+        Text("Security operations, scheduling, policy customization, reporting and audit intelligence.")
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Scheduled monitoring", style = MaterialTheme.typography.titleMedium)
+                Text("Runs bounded discovery and service audits periodically and records inventory changes locally.")
+                Button(onClick = {
+                    scheduled = scheduled.copy(enabled = !scheduled.enabled)
+                    scheduledStore.save(scheduled)
+                    ScheduledMonitorScheduler.apply(context, scheduled)
+                }) { Text(if (scheduled.enabled) "Disable schedule" else "Enable schedule") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1L, 6L, 24L).forEach { hours ->
+                        TextButton(onClick = {
+                            scheduled = scheduled.copy(intervalHours = hours)
+                            scheduledStore.save(scheduled)
+                            if (scheduled.enabled) ScheduledMonitorScheduler.apply(context, scheduled)
+                        }) { Text(hours.toString() + "h") }
+                    }
+                }
+                TextButton(onClick = {
+                    scheduled = scheduled.copy(notifyOnChanges = !scheduled.notifyOnChanges)
+                    scheduledStore.save(scheduled)
+                }) { Text("Notifications: " + if (scheduled.notifyOnChanges) "ON" else "OFF") }
+                Text("Configured interval: " + scheduled.intervalHours + " hours")
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("App protection policy", style = MaterialTheme.typography.titleMedium)
+                Text("Policy is persisted locally and exposes the intended protection posture.")
+                TextButton(onClick = {
+                    lockPolicy = lockPolicy.copy(enabled = !lockPolicy.enabled)
+                    lockStore.save(lockPolicy)
+                }) { Text("App lock: " + if (lockPolicy.enabled) "ENABLED" else "DISABLED") }
+                TextButton(onClick = {
+                    lockPolicy = lockPolicy.copy(lockOnBackground = !lockPolicy.lockOnBackground)
+                    lockStore.save(lockPolicy)
+                }) { Text("Lock on background: " + if (lockPolicy.lockOnBackground) "ON" else "OFF") }
+                TextButton(onClick = {
+                    lockPolicy = lockPolicy.copy(requireBiometric = !lockPolicy.requireBiometric)
+                    lockStore.save(lockPolicy)
+                }) { Text("Require biometric: " + if (lockPolicy.requireBiometric) "ON" else "OFF") }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Custom security policies", style = MaterialTheme.typography.titleMedium)
+                androidx.compose.material3.OutlinedTextField(value = customId, onValueChange = { customId = it }, label = { Text("Policy ID") }, modifier = Modifier.fillMaxWidth())
+                androidx.compose.material3.OutlinedTextField(value = customTitle, onValueChange = { customTitle = it }, label = { Text("Title") }, modifier = Modifier.fillMaxWidth())
+                androidx.compose.material3.OutlinedTextField(value = customDescription, onValueChange = { customDescription = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    runCatching {
+                        customStore.upsert(CustomPolicy(customId.trim(), customTitle.trim(), customDescription.trim()))
+                    }.onSuccess {
+                        customPolicies = customStore.load()
+                        customId = ""
+                        customTitle = ""
+                        customDescription = ""
+                    }
+                }) { Text("Save policy") }
+                customPolicies.forEach { policy ->
+                    Text(policy.id + " — " + policy.title)
+                    Text(policy.description)
+                    TextButton(onClick = {
+                        customStore.delete(policy.id)
+                        customPolicies = customStore.load()
+                    }) { Text("Delete") }
+                }
+            }
+        }
 
         Button(onClick = { onRunAudit(url) }) { Text("Run security audit") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1124,7 +1212,7 @@ private fun AdvancedSecuritySection(
             Button(onClick = { onExportReport("zip") }) { Text("ZIP") }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Installed applications", style = MaterialTheme.typography.titleMedium)
                 Text("Applications analyzed: " + apps.size)
@@ -1135,7 +1223,7 @@ private fun AdvancedSecuritySection(
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("DNS & Gateway", style = MaterialTheme.typography.titleMedium)
                 Text(dns?.evidence?.joinToString(" ") ?: "Not audited")
@@ -1143,7 +1231,7 @@ private fun AdvancedSecuritySection(
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Wi-Fi trust", style = MaterialTheme.typography.titleMedium)
                 Text(wifi?.status?.name ?: "Not audited")
@@ -1152,21 +1240,16 @@ private fun AdvancedSecuritySection(
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("TLS / HTTP analyzer", style = MaterialTheme.typography.titleMedium)
-                androidx.compose.material3.OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text("URL to audit") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                androidx.compose.material3.OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL to audit") }, modifier = Modifier.fillMaxWidth())
                 tls?.evidence?.forEach { Text(it) }
                 http?.evidence?.forEach { Text(it) }
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Security policies", style = MaterialTheme.typography.titleMedium)
                 Text("Profile: " + selectedPolicyProfile)
@@ -1178,7 +1261,7 @@ private fun AdvancedSecuritySection(
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Security Learning Mode", style = MaterialTheme.typography.titleMedium)
                 SecurityLearningMode.topics.forEach {
@@ -1190,7 +1273,8 @@ private fun AdvancedSecuritySection(
                 }
             }
         }
-        Card(modifier = Modifier.fillMaxWidth()) {
+
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Security Timeline", style = MaterialTheme.typography.titleMedium)
                 timelineEvents.takeLast(10).reversed().forEach {
@@ -1198,7 +1282,6 @@ private fun AdvancedSecuritySection(
                     Text(it.detail)
                 }
             }
-        }
         }
     }
 }
