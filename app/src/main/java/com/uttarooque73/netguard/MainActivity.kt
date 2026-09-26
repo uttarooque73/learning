@@ -90,6 +90,8 @@ import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
 import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
+import com.uttarooque73.netguard.features.timeline.SecurityTimelineEvent
+import com.uttarooque73.netguard.features.timeline.SecurityTimelineStore
 
 class MainActivity : ComponentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
@@ -132,6 +134,8 @@ class MainActivity : ComponentActivity() {
     private var httpResult by mutableStateOf<HttpSecurityResult?>(null)
     private var policyResults by mutableStateOf<List<PolicyResult>>(emptyList())
     private var selectedPolicyProfile by mutableStateOf("Home")
+    private lateinit var timelineStore: SecurityTimelineStore
+    private var timelineEvents by mutableStateOf<List<SecurityTimelineEvent>>(emptyList())
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -156,6 +160,7 @@ class MainActivity : ComponentActivity() {
         baselineStore = BaselineStore(this)
         adminStore = AdminStore(this)
         wifiObservationStore = WifiObservationStore(this)
+        timelineStore = SecurityTimelineStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
@@ -167,6 +172,7 @@ class MainActivity : ComponentActivity() {
         profiles = adminStore.loadProfiles()
         assets = adminStore.loadAssets()
         adminEvents = adminStore.loadEvents()
+        timelineEvents = timelineStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         mobileSecurity = MobileSecurityAudit.inspect(this)
@@ -216,7 +222,8 @@ class MainActivity : ComponentActivity() {
                 selectedPolicyProfile = selectedPolicyProfile,
                 onSelectPolicyProfile = { selectedPolicyProfile = it },
                 onRunAdvancedAudit = ::runAdvancedAudit,
-                onExportReport = ::exportReport
+                onExportReport = ::exportReport,
+                timelineEvents = timelineEvents
             )
         }
     }
@@ -237,11 +244,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun recordTimeline(category: String, title: String, detail: String) {
+        timelineEvents = (timelineEvents + SecurityTimelineEvent(java.util.UUID.randomUUID().toString(), category, title, detail, System.currentTimeMillis())).takeLast(200)
+        timelineStore.save(timelineEvents)
+    }
+
     private fun inspectNetwork() {
         discoveryError = null
         runCatching { NetworkDiscovery(this).inspect() }
             .onSuccess { info ->
                 networkInfo = info
+                recordTimeline("network", "Network inspected", info.ssid ?: "Active network inspected")
                 devices = emptyList()
                 services = emptyList()
                 findings = emptyList()
@@ -390,6 +403,7 @@ class MainActivity : ComponentActivity() {
         auditHistory = (auditHistory + entry).takeLast(20)
         auditHistoryStore.save(snapshot)
         latestReport = AuditReportGenerator.generate(snapshot)
+        recordTimeline("report", "Audit report created", "Report ${snapshot.id}")
     }
     private fun verifyFinding(finding: Finding) {
         if (verifyingFindingId != null) return
@@ -401,6 +415,7 @@ class MainActivity : ComponentActivity() {
                 it.findingId == result.findingId && it.ipAddress == result.ipAddress
             } + result
             verificationStore.save(verificationResults)
+            recordTimeline("verification", "Finding verified", "${finding.id} on ${finding.ipAddress}: ${result.status.name}")
             verifyingFindingId = null
         }
     }
@@ -409,6 +424,7 @@ class MainActivity : ComponentActivity() {
         val record = RemediationRecord(finding.id, finding.ipAddress, RemediationStatus.IN_PROGRESS)
         remediationRecords = remediationRecords.filterNot { it.findingId == finding.id && it.ipAddress == finding.ipAddress } + record
         remediationStore.save(remediationRecords)
+        recordTimeline("remediation", "Remediation started", "${finding.id} on ${finding.ipAddress}")
     }
 
     private fun auditDevice(ipAddress: String) {
@@ -421,6 +437,7 @@ class MainActivity : ComponentActivity() {
                     val newFindings = found.mapNotNull(ServiceFindingRules::evaluate)
                     findings = findings.filterNot { it.ipAddress == ipAddress } + newFindings
                     findingStore.save(findings)
+                    recordTimeline("service", "Service audit", "$ipAddress: ${found.size} reachable services")
                 }
                 .onFailure { discoveryError = it.message ?: "Service audit failed." }
             auditingIp = null
@@ -439,6 +456,7 @@ class MainActivity : ComponentActivity() {
                 .onSuccess { found ->
                     devices = found
                     inventoryStore.saveDevices(found)
+                    recordTimeline("device", "Device discovery", "Discovered ${found.size} reachable devices")
                 }
                 .onFailure { discoveryError = it.message ?: "Device discovery failed." }
             isDiscovering = false
@@ -493,7 +511,8 @@ fun NetGuardApp(
     selectedPolicyProfile: String,
     onSelectPolicyProfile: (String) -> Unit,
     onRunAdvancedAudit: (String?) -> Unit,
-    onExportReport: (String) -> Unit
+    onExportReport: (String) -> Unit,
+    timelineEvents: List<SecurityTimelineEvent>
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -541,7 +560,8 @@ fun NetGuardApp(
                 httpResult = httpResult,
                 policyResults = policyResults,
                 onRunAdvancedAudit = onRunAdvancedAudit,
-                onExportReport = onExportReport
+                onExportReport = onExportReport,
+                timelineEvents = timelineEvents
             )
         }
     }
@@ -592,7 +612,8 @@ private fun Dashboard(
     httpResult: HttpSecurityResult?,
     policyResults: List<PolicyResult>,
     onRunAdvancedAudit: (String?) -> Unit,
-    onExportReport: (String) -> Unit
+    onExportReport: (String) -> Unit,
+    timelineEvents: List<SecurityTimelineEvent>
 ) {
     Column(
         modifier = modifier
@@ -661,7 +682,7 @@ private fun Dashboard(
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
-            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport)
+            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents)
         }
     }
 }
@@ -970,7 +991,8 @@ private fun AdvancedSecuritySection(
     selectedPolicyProfile: String,
     onSelectPolicyProfile: (String) -> Unit,
     onRunAudit: (String?) -> Unit,
-    onExportReport: (String) -> Unit
+    onExportReport: (String) -> Unit,
+    timelineEvents: List<SecurityTimelineEvent>
 ) {
     var url by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
     Column(
@@ -1053,6 +1075,15 @@ private fun AdvancedSecuritySection(
                     Text("Verification: " + it.verificationGuide)
                 }
             }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Security Timeline", style = MaterialTheme.typography.titleMedium)
+                timelineEvents.takeLast(10).reversed().forEach {
+                    Text(it.category.uppercase() + " — " + it.title)
+                    Text(it.detail)
+                }
+            }
+        }
         }
     }
 }
