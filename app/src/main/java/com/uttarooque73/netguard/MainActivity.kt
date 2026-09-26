@@ -42,6 +42,7 @@ import com.uttarooque73.netguard.audit.ServiceAuditStore
 import com.uttarooque73.netguard.audit.Finding
 import com.uttarooque73.netguard.audit.FindingStore
 import com.uttarooque73.netguard.audit.ServiceFindingRules
+import com.uttarooque73.netguard.audit.RiskCalculator
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private var services by mutableStateOf<List<DiscoveredService>>(emptyList())
     private var auditingIp by mutableStateOf<String?>(null)
     private var findings by mutableStateOf<List<Finding>>(emptyList())
+    private var selectedFinding by mutableStateOf<Finding?>(null)
     private lateinit var findingStore: FindingStore
 
     private val locationPermissionLauncher = registerForActivityResult(
@@ -85,7 +87,9 @@ class MainActivity : ComponentActivity() {
                 services = services,
                 auditingIp = auditingIp,
                 onAuditDevice = ::auditDevice,
-                findings = findings
+                findings = findings,
+                selectedFinding = selectedFinding,
+                onSelectFinding = { selectedFinding = it }
             )
         }
     }
@@ -158,7 +162,9 @@ fun NetGuardApp(
     services: List<DiscoveredService>,
     auditingIp: String?,
     onAuditDevice: (String) -> Unit,
-    findings: List<Finding>
+    findings: List<Finding>,
+    selectedFinding: Finding?,
+    onSelectFinding: (Finding?) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -175,7 +181,9 @@ fun NetGuardApp(
                 services = services,
                 auditingIp = auditingIp,
                 onAuditDevice = onAuditDevice,
-                findings = findings
+                findings = findings,
+                selectedFinding = selectedFinding,
+                onSelectFinding = onSelectFinding
             )
         }
     }
@@ -195,7 +203,9 @@ private fun Dashboard(
     services: List<DiscoveredService>,
     auditingIp: String?,
     onAuditDevice: (String) -> Unit,
-    findings: List<Finding>
+    findings: List<Finding>,
+    selectedFinding: Finding?,
+    onSelectFinding: (Finding?) -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -247,17 +257,11 @@ private fun Dashboard(
                     }
                 }
 
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Security posture", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text("No audit findings yet")
-                        Text("Phase 3 will add authorized service and exposure checks.")
-                    }
-                }
+                RiskDashboard(findings, onSelectFinding)
+                selectedFinding?.let { FindingDetail(it, onSelectFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
-            Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings)
+            Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
         }
     }
 }
@@ -293,7 +297,8 @@ private fun DevicesScreen(
     services: List<DiscoveredService>,
     auditingIp: String?,
     onAuditDevice: (String) -> Unit,
-    findings: List<Finding>
+    findings: List<Finding>,
+    onSelectFinding: (Finding?) -> Unit
 ) {
     Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
     if (isDiscovering) CircularProgressIndicator()
@@ -313,9 +318,47 @@ private fun DevicesScreen(
                     Text(service.port.toString() + "/" + service.protocol + " — " + service.serviceName)
                 }
                 deviceFindings.forEach { finding ->
-                    Text(finding.severity.name + ": " + finding.title)
+                    TextButton(onClick = { onSelectFinding(finding) }) { Text(finding.severity.name + ": " + finding.title) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RiskDashboard(findings: List<Finding>, onSelectFinding: (Finding?) -> Unit) {
+    val score = RiskCalculator.score(findings)
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Security posture", style = MaterialTheme.typography.titleMedium)
+            Text("Risk score: " + score + "/100")
+            Text("Critical: " + findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.CRITICAL })
+            Text("High: " + findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.HIGH })
+            Text("Medium: " + findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.MEDIUM })
+            Text("Low: " + findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.LOW })
+            if (findings.isEmpty()) Text("No findings recorded yet. Audit discovered devices to populate findings.")
+            findings.take(5).forEach { finding ->
+                TextButton(onClick = { onSelectFinding(finding) }) {
+                    Text(finding.severity.name + " — " + finding.title + " (" + finding.ipAddress + ")")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FindingDetail(finding: Finding, onClose: (Finding?) -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(finding.title, style = MaterialTheme.typography.titleLarge)
+            Text("Severity: " + finding.severity.name)
+            Text("Confidence: " + finding.confidence.name)
+            Text("Asset: " + finding.ipAddress)
+            Text("Evidence: " + finding.evidence)
+            Text("Explanation: " + finding.explanation)
+            Text("Remediation: " + finding.remediation)
+            Text("Verification: " + finding.verification)
+            TextButton(onClick = { onClose(null) }) { Text("Close") }
         }
     }
 }
