@@ -54,10 +54,12 @@ android {
     }
 
     lint {
-        // AndroidX lifecycle's NullSafeMutableLiveData detector crashes with
-        // the lint/UAST toolchain used by AGP 8.7.3. Disable the broken
-        // detector rather than hiding unrelated lint findings.
-        disable += "NullSafeMutableLiveData"
+        // Disable known incompatible third-party lint detectors with the
+        // AGP 8.7.3 lint/UAST toolchain. Other lint checks remain enabled.
+        disable += setOf(
+            "NullSafeMutableLiveData",
+            "FrequentlyChangingValue"
+        )
     }
 
     buildFeatures {
