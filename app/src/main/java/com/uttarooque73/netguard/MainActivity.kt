@@ -841,7 +841,7 @@ private fun Dashboard(
             Screen.Reports -> ReportSection(auditHistory, latestReport, onCreateReport)
             Screen.Administration -> AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
             Screen.Learning -> LearningScreen()
-            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents)
+            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents, customPolicyEvaluations)
         }
     }
 }
@@ -1193,7 +1193,8 @@ private fun AdvancedSecuritySection(
     onSelectPolicyProfile: (String) -> Unit,
     onRunAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit,
-    timelineEvents: List<SecurityTimelineEvent>
+    timelineEvents: List<SecurityTimelineEvent>,
+    customPolicyEvaluations: List<CustomPolicyEvaluation>
 ) {
     var url by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
