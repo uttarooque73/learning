@@ -1349,3 +1349,18 @@ private fun AdvancedSecuritySection(
         }
     }
 }
+
+
+@Composable
+private fun LockScreen(onUnlock: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("NetGuard locked", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(12.dp))
+        Text("Security audit data is protected. Authenticate to continue.")
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onUnlock) { Text("Unlock") }
+    }
+}
