@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,8 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import java.text.DateFormat
-import java.util.Date
 import androidx.lifecycle.lifecycleScope
 import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.DiscoveredDevice
@@ -196,8 +196,18 @@ class MainActivity : ComponentActivity() {
             .onSuccess { info ->
                 networkInfo = info
                 devices = emptyList()
+                services = emptyList()
+                findings = emptyList()
+                verificationResults = emptyList()
+                selectedFinding = null
+                val baseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork()
+                baselineResults = BaselineEvaluator.evaluate(baseline, emptyList())
                 inventoryStore.saveNetwork(info)
                 inventoryStore.clearDevices()
+                monitorBaselineStore.clear()
+                serviceStore.clear()
+                findingStore.save(emptyList())
+                verificationStore.save(emptyList())
             }
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
@@ -231,12 +241,8 @@ class MainActivity : ComponentActivity() {
         monitoring = true
         lifecycleScope.launch {
             val previousDeviceIps = monitorBaselineStore.loadDeviceIps()
-            val previousServiceKeys = monitorBaselineStore.loadServiceKeys()
             val previousDevices = previousDeviceIps.map { DiscoveredDevice(it, reachable = true) }
-            val previousServices = previousServiceKeys.mapNotNull { key ->
-                val parts = key.split('|')
-                if (parts.size != 3) null else DiscoveredService(parts[0], parts[2].toIntOrNull() ?: return@mapNotNull null, parts[1], parts[1], true)
-            }
+            val previousServices = monitorBaselineStore.loadServices()
             val events = MonitorRunner.check(previousDevices, devices, previousServices, services)
             monitorEvents = (monitorEvents + events).takeLast(100)
             monitorStore.save(monitorEvents)
@@ -430,7 +436,11 @@ private fun Dashboard(
     onUpdateAsset: (String) -> Unit
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+            .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -461,7 +471,7 @@ private fun Dashboard(
                             Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
                             Text("Local IP: " + (networkInfo.localAddress ?: "Unavailable"))
                             Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
-                            Text("Subnet: " + (networkInfo.subnet ?: "Unavailable"))
+                            Text("Network CIDR: " + (networkInfo.subnet ?: "Unavailable"))
                         }
                     }
                 }
@@ -496,12 +506,18 @@ enum class Screen { Dashboard, Network, Devices }
 
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
-    Text("Network Inventory", style = MaterialTheme.typography.headlineSmall)
-    if (networkInfo == null) {
-        Text("No network inventory available. Inspect the current network first.")
-        return
-    }
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("Network Inventory", style = MaterialTheme.typography.headlineSmall)
+        if (networkInfo == null) {
+            Text("No network inventory available. Inspect the current network first.")
+        } else {
+            Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Connection", style = MaterialTheme.typography.titleMedium)
             Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
@@ -509,9 +525,11 @@ private fun NetworkScreen(networkInfo: NetworkInfo?) {
             Text("Interface: " + (networkInfo.interfaceName ?: "Unavailable"))
             Text("Local address: " + (networkInfo.localAddress ?: "Unavailable"))
             Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
-            Text("Subnet: " + (networkInfo.subnet ?: "Unavailable"))
+            Text("Network CIDR: " + (networkInfo.subnet ?: "Unavailable"))
             Text("DNS: " + networkInfo.dnsServers.ifEmpty { listOf("Unavailable") }.joinToString())
             Text("Wi-Fi security: " + (networkInfo.wifiSecurity ?: "Not determined"))
+            }
+        }
         }
     }
 }
@@ -526,10 +544,17 @@ private fun DevicesScreen(
     findings: List<Finding>,
     onSelectFinding: (Finding?) -> Unit
 ) {
-    Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
-    if (isDiscovering) CircularProgressIndicator()
-    if (!isDiscovering && devices.isEmpty()) Text("No reachable devices have been discovered.")
-    devices.forEach { device ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
+        if (isDiscovering) CircularProgressIndicator()
+        if (!isDiscovering && devices.isEmpty()) Text("No reachable devices have been discovered.")
+        devices.forEach { device ->
         val deviceServices = services.filter { it.ipAddress == device.ipAddress }
         val deviceFindings = findings.filter { it.ipAddress == device.ipAddress }
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -540,13 +565,27 @@ private fun DevicesScreen(
                 Button(onClick = { onAuditDevice(device.ipAddress) }, enabled = auditingIp == null) {
                     Text(if (auditingIp == device.ipAddress) "Auditing…" else "Audit Services")
                 }
-                deviceServices.forEach { service ->
-                    Text(service.port.toString() + "/" + service.protocol + " — " + service.serviceName)
+                if (deviceServices.isEmpty()) {
+                    Text("No catalogued services detected.")
+                } else {
+                    Text("Services", style = MaterialTheme.typography.titleSmall)
+                    deviceServices.forEach { service ->
+                        Text(
+                            service.port.toString() + "/" + service.protocol + " — " +
+                                service.serviceName + if (service.reachable) " — reachable" else " — unavailable"
+                        )
+                    }
                 }
-                deviceFindings.forEach { finding ->
-                    TextButton(onClick = { onSelectFinding(finding) }) { Text(finding.severity.name + ": " + finding.title) }
+                if (deviceFindings.isNotEmpty()) {
+                    Text("Findings", style = MaterialTheme.typography.titleSmall)
+                    deviceFindings.forEach { finding ->
+                        TextButton(onClick = { onSelectFinding(finding) }) {
+                            Text(finding.severity.name + ": " + finding.title)
+                        }
+                    }
                 }
             }
+        }
         }
     }
 }
