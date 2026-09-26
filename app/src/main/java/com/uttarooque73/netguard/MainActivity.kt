@@ -5,7 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.content.Intent
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -127,7 +127,7 @@ import com.uttarooque73.netguard.monitor.ScheduledMonitorConfigStore
 import com.uttarooque73.netguard.monitor.ScheduledMonitorScheduler
 import com.uttarooque73.netguard.security.AppLockPolicyStore
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
     private var devices by mutableStateOf<List<DiscoveredDevice>>(emptyList())
     private var isDiscovering by mutableStateOf(false)
@@ -191,7 +191,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        appLockPolicyStore = AppLockPolicyStore(this)\n        inventoryStore = NetworkInventoryStore(this)
+        appLockPolicyStore = AppLockPolicyStore(this)
+        inventoryStore = NetworkInventoryStore(this)
         serviceStore = ServiceAuditStore(this)
         findingStore = FindingStore(this)
         remediationStore = RemediationStore(this)
