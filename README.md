@@ -4,9 +4,9 @@ Android network security audit and remediation assistant.
 
 ## Status
 
-**Phase 1 — Android Foundation:** started.
+**MVP hardening — Phases 0–12 substantially implemented.**
 
-The repository currently contains the Android project skeleton and an initial dashboard. Network discovery and audit functionality are intentionally not enabled yet.
+The app currently supports local network discovery, device/service auditing, security findings, remediation guidance, verification, reports, monitoring, baselines, administration, and Android/mobile security posture checks.
 
 ## Product workflow
 
