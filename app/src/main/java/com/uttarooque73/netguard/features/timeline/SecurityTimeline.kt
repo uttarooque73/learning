@@ -10,5 +10,5 @@ data class SecurityTimelineEvent(
 
 object SecurityTimeline {
     fun merge(vararg eventGroups: List<SecurityTimelineEvent>): List<SecurityTimelineEvent> =
-        eventGroups.flatten().sortedByDescending { it.createdAtEpochMs }
+        eventGroups.toList().flatten().sortedByDescending { it.createdAtEpochMs }
 }
