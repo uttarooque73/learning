@@ -16,21 +16,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import com.uttarooque73.netguard.network.DeviceDiscovery
+import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
+    private var devices by mutableStateOf<List<DiscoveredDevice>>(emptyList())
+    private var isDiscovering by mutableStateOf(false)
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -43,7 +50,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             NetGuardApp(
                 networkInfo = networkInfo,
-                onStartAudit = ::requestNetworkPermissionAndInspect
+                devices = devices,
+                isDiscovering = isDiscovering,
+                onStartAudit = ::requestNetworkPermissionAndInspect,
+                onDiscoverDevices = ::discoverDevices
             )
         }
     }
@@ -58,17 +68,39 @@ class MainActivity : ComponentActivity() {
 
     private fun inspectNetwork() {
         networkInfo = NetworkDiscovery(this).inspect()
+        devices = emptyList()
+    }
+
+    private fun discoverDevices() {
+        val info = networkInfo ?: return
+        val localIp = info.localAddress ?: return
+        val prefix = info.subnet?.substringAfter('/')?.toIntOrNull() ?: return
+
+        lifecycleScope.launch {
+            isDiscovering = true
+            devices = DeviceDiscovery().discover(localIp, prefix)
+            isDiscovering = false
+        }
     }
 }
 
 @Composable
-fun NetGuardApp(networkInfo: NetworkInfo?, onStartAudit: () -> Unit) {
+fun NetGuardApp(
+    networkInfo: NetworkInfo?,
+    devices: List<DiscoveredDevice>,
+    isDiscovering: Boolean,
+    onStartAudit: () -> Unit,
+    onDiscoverDevices: () -> Unit
+) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
             Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
-                onStartAudit = onStartAudit
+                devices = devices,
+                isDiscovering = isDiscovering,
+                onStartAudit = onStartAudit,
+                onDiscoverDevices = onDiscoverDevices
             )
         }
     }
@@ -78,7 +110,10 @@ fun NetGuardApp(networkInfo: NetworkInfo?, onStartAudit: () -> Unit) {
 private fun Dashboard(
     modifier: Modifier = Modifier,
     networkInfo: NetworkInfo?,
-    onStartAudit: () -> Unit
+    devices: List<DiscoveredDevice>,
+    isDiscovering: Boolean,
+    onStartAudit: () -> Unit,
+    onDiscoverDevices: () -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -109,8 +144,28 @@ private fun Dashboard(
             Button(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
                 Text(if (networkInfo == null) "Inspect Network" else "Refresh")
             }
-            Button(onClick = { }, modifier = Modifier.weight(1f)) {
-                Text("Settings")
+            Button(
+                onClick = onDiscoverDevices,
+                enabled = networkInfo != null && !isDiscovering,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(if (isDiscovering) "Discovering…" else "Find Devices")
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Discovered devices", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                if (isDiscovering) {
+                    CircularProgressIndicator()
+                } else if (devices.isEmpty()) {
+                    Text("No devices discovered yet")
+                } else {
+                    devices.forEach { device ->
+                        Text("${device.ipAddress} — reachable")
+                    }
+                }
             }
         }
 
