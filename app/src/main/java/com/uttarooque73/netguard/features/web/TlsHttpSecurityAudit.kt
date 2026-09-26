@@ -37,7 +37,7 @@ object TlsHttpSecurityAudit {
             connection.connect()
             val cert = connection.serverCertificates.firstOrNull() as? java.security.cert.X509Certificate
             val evidence = buildList {
-                add("TLS protocol: " + (connection.session.protocol ?: "unknown"))
+                add("HTTPS endpoint reachable; negotiated TLS protocol is not exposed by HttpsURLConnection.")
                 cert?.let {
                     add("Certificate subject: " + it.subjectX500Principal.name)
                     add("Certificate issuer: " + it.issuerX500Principal.name)
@@ -47,7 +47,7 @@ object TlsHttpSecurityAudit {
             TlsAuditResult(
                 url = url,
                 reachable = true,
-                protocol = connection.session.protocol,
+                protocol = null,
                 certificateSubject = cert?.subjectX500Principal?.name,
                 certificateIssuer = cert?.issuerX500Principal?.name,
                 expiresAtEpochMs = cert?.notAfter?.time,
@@ -78,8 +78,7 @@ object TlsHttpSecurityAudit {
                 .filterKeys { it != null }
                 .mapKeys { it.key!! }
                 .mapValues { it.value.joinToString(", ") }
-            val httpsRedirect = location?.startsWith("https://", ignoreCase = true)
-                ?: false
+            val httpsRedirect = location?.startsWith("https://", ignoreCase = true) ?: false
             HttpSecurityResult(
                 url = url,
                 reachable = true,
