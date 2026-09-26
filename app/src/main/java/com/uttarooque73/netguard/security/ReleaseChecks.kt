@@ -8,10 +8,32 @@ data class ReleaseCheck(
 )
 
 object ReleaseChecks {
-    fun evaluate(): List<ReleaseCheck> = listOf(
-        ReleaseCheck("REL-001", "No credential collection", PrivacyPolicy.NO_CREDENTIAL_COLLECTION, "The MVP does not collect passwords or authentication secrets."),
-        ReleaseCheck("REL-002", "No remote device control", PrivacyPolicy.NO_REMOTE_DEVICE_CONTROL, "Remediation remains guided and does not modify remote devices."),
-        ReleaseCheck("REL-003", "Local-first storage", PrivacyPolicy.LOCAL_STORAGE_ONLY, "Security inventory and audit data remain on-device."),
-        ReleaseCheck("REL-004", "No background activity by default", PrivacyPolicy.NO_BACKGROUND_ACTIVITY_BY_DEFAULT, "Monitoring requires an explicit user-triggered check.")
-    )
-)
+    fun evaluate(): List<ReleaseCheck> {
+        return listOf(
+            ReleaseCheck(
+                id = "REL-001",
+                title = "No credential collection",
+                passed = PrivacyPolicy.NO_CREDENTIAL_COLLECTION,
+                detail = "The MVP does not collect passwords or authentication secrets."
+            ),
+            ReleaseCheck(
+                id = "REL-002",
+                title = "No remote device control",
+                passed = PrivacyPolicy.NO_REMOTE_DEVICE_CONTROL,
+                detail = "Remediation remains guided and does not modify remote devices."
+            ),
+            ReleaseCheck(
+                id = "REL-003",
+                title = "Local-first storage",
+                passed = PrivacyPolicy.LOCAL_STORAGE_ONLY,
+                detail = "Security inventory and audit data remain on-device."
+            ),
+            ReleaseCheck(
+                id = "REL-004",
+                title = "No background activity by default",
+                passed = PrivacyPolicy.NO_BACKGROUND_ACTIVITY_BY_DEFAULT,
+                detail = "Monitoring requires an explicit user-triggered check."
+            )
+        )
+    }
+}
