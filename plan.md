@@ -471,3 +471,10 @@ For every feature:
 8. Run CI/build/lint tests.
 9. Update this roadmap.
 10. Only then start the next feature.
+
+## UI and Intelligence Expansion
+
+- Dedicated navigation destinations for Network, Devices, Services, Findings, Remediation, Monitoring, Baseline, Mobile, Wi-Fi, Web, Policies, Timeline, Reports, Administration, Learning, and Advanced security.
+- Security Intelligence: asset classification, limited OUI vendor candidates, service fingerprint evidence, network topology model, DNS security analysis, risk trend points, and evidence-backed vulnerability candidates.
+- Local security hardening primitives: Android Keystore AES-GCM secure storage, app-lock policy model, and security notification helper.
+- Feature screens are intentionally separated from the Overview dashboard; Overview is limited to posture and quick actions.
