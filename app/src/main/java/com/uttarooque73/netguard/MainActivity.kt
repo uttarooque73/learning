@@ -1075,6 +1075,7 @@ private fun AdvancedSecuritySection(
                     Text("Verification: " + it.verificationGuide)
                 }
             }
+        }
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Security Timeline", style = MaterialTheme.typography.titleMedium)
