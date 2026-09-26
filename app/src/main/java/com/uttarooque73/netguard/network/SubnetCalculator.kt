@@ -1,6 +1,23 @@
 package com.uttarooque73.netguard.network
 
 object SubnetCalculator {
+    fun networkCidr(localIp: String, prefixLength: Int): String? {
+        if (prefixLength !in 1..30) return null
+        val octets = localIp.split('.').mapNotNull { it.toIntOrNull() }
+        if (octets.size != 4 || octets.any { it !in 0..255 }) return null
+        val hostBits = 32 - prefixLength
+        val localValue = octets.fold(0L) { acc, octet -> (acc shl 8) or octet.toLong() }
+        val mask = (-1L shl hostBits) and 0xffffffffL
+        val network = localValue and mask
+        val address = listOf(
+            (network shr 24) and 255,
+            (network shr 16) and 255,
+            (network shr 8) and 255,
+            network and 255
+        ).joinToString(".")
+        return "$address/$prefixLength"
+    }
+
     fun hosts(localIp: String, prefixLength: Int): List<String> {
         if (prefixLength !in 1..30) return emptyList()
         val octets = localIp.split('.').mapNotNull { it.toIntOrNull() }
