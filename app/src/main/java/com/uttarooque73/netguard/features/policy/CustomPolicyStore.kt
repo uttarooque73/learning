@@ -17,6 +17,8 @@ class CustomPolicyStore(context: Context) {
                     id = item.getString("id"),
                     title = item.getString("title"),
                     description = item.getString("description"),
+                    ruleType = runCatching { CustomPolicyRuleType.valueOf(item.optString("ruleType", "INFORMATIONAL")) }.getOrDefault(CustomPolicyRuleType.INFORMATIONAL),
+                    port = item.optInt("port", 0).takeIf { it > 0 },
                     enabled = item.optBoolean("enabled", true)
                 )
             }
@@ -30,6 +32,8 @@ class CustomPolicyStore(context: Context) {
                 put("id", it.id)
                 put("title", it.title)
                 put("description", it.description)
+                put("ruleType", it.ruleType.name)
+                if (it.port != null) put("port", it.port)
                 put("enabled", it.enabled)
             })
         }
