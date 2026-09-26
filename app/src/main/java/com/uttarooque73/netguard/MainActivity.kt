@@ -53,6 +53,10 @@ import com.uttarooque73.netguard.verification.VerificationStore
 import com.uttarooque73.netguard.report.AuditHistoryStore
 import com.uttarooque73.netguard.report.AuditReportGenerator
 import com.uttarooque73.netguard.report.AuditSnapshot
+import com.uttarooque73.netguard.monitor.MonitorEvent
+import com.uttarooque73.netguard.monitor.MonitorStore
+import com.uttarooque73.netguard.monitor.MonitorBaselineStore
+import com.uttarooque73.netguard.monitor.MonitorRunner
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -73,6 +77,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var auditHistoryStore: AuditHistoryStore
     private var auditHistory by mutableStateOf<List<com.uttarooque73.netguard.report.AuditHistoryEntry>>(emptyList())
     private var latestReport by mutableStateOf<String?>(null)
+    private lateinit var monitorStore: MonitorStore
+    private lateinit var monitorBaselineStore: MonitorBaselineStore
+    private var monitorEvents by mutableStateOf<List<MonitorEvent>>(emptyList())
+    private var monitoring by mutableStateOf(false)
     private var verificationResults by mutableStateOf<List<VerificationResult>>(emptyList())
     private var verifyingFindingId by mutableStateOf<String?>(null)
     private lateinit var findingStore: FindingStore
@@ -91,11 +99,14 @@ class MainActivity : ComponentActivity() {
         remediationStore = RemediationStore(this)
         verificationStore = VerificationStore(this)
         auditHistoryStore = AuditHistoryStore(this)
+        monitorStore = MonitorStore(this)
+        monitorBaselineStore = MonitorBaselineStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
         verificationResults = verificationStore.load()
         auditHistory = auditHistoryStore.load()
+        monitorEvents = monitorStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -121,7 +132,10 @@ class MainActivity : ComponentActivity() {
                 onVerifyFinding = ::verifyFinding,
                 auditHistory = auditHistory,
                 latestReport = latestReport,
-                onCreateReport = ::createReport
+                onCreateReport = ::createReport,
+                monitoring = monitoring,
+                monitorEvents = monitorEvents,
+                onCheckChanges = ::checkForChanges
             )
         }
     }
@@ -146,6 +160,25 @@ class MainActivity : ComponentActivity() {
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
+    private fun checkForChanges() {
+        if (monitoring) return
+        monitoring = true
+        lifecycleScope.launch {
+            val previousDeviceIps = monitorBaselineStore.loadDeviceIps()
+            val previousServiceKeys = monitorBaselineStore.loadServiceKeys()
+            val previousDevices = previousDeviceIps.map { DiscoveredDevice(it, reachable = true) }
+            val previousServices = previousServiceKeys.mapNotNull { key ->
+                val parts = key.split('|')
+                if (parts.size != 3) null else DiscoveredService(parts[0], parts[2].toIntOrNull() ?: return@mapNotNull null, parts[1], parts[1], true)
+            }
+            val events = MonitorRunner.check(previousDevices, devices, previousServices, services)
+            monitorEvents = (monitorEvents + events).takeLast(100)
+            monitorStore.save(monitorEvents)
+            monitorBaselineStore.saveDevices(devices)
+            monitorBaselineStore.saveServices(services)
+            monitoring = false
+        }
+    }
     private fun createReport() {
         val snapshot = AuditSnapshot(
             id = java.util.UUID.randomUUID().toString(),
@@ -240,7 +273,10 @@ fun NetGuardApp(
     onVerifyFinding: (Finding) -> Unit,
     auditHistory: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
     latestReport: String?,
-    onCreateReport: () -> Unit
+    onCreateReport: () -> Unit,
+    monitoring: Boolean,
+    monitorEvents: List<MonitorEvent>,
+    onCheckChanges: () -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -267,7 +303,10 @@ fun NetGuardApp(
                 onVerifyFinding = onVerifyFinding,
                 auditHistory = auditHistory,
                 latestReport = latestReport,
-                onCreateReport = onCreateReport
+                onCreateReport = onCreateReport,
+                monitoring = monitoring,
+                monitorEvents = monitorEvents,
+                onCheckChanges = onCheckChanges
             )
         }
     }
@@ -351,6 +390,7 @@ private fun Dashboard(
 
                 RiskDashboard(findings, onSelectFinding)
                 ReportSection(auditHistory, latestReport, onCreateReport)
+                MonitoringSection(monitoring, monitorEvents, onCheckChanges)
                 selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
@@ -510,6 +550,26 @@ private fun ReportSection(
             latestReport?.let { report ->
                 Text("Latest report", style = MaterialTheme.typography.titleSmall)
                 Text(report)
+            }
+        }
+    }
+}
+@Composable
+private fun MonitoringSection(
+    monitoring: Boolean,
+    events: List<MonitorEvent>,
+    onCheckChanges: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Monitoring & alerts", style = MaterialTheme.typography.titleMedium)
+            Text("Checks the existing authorized inventory for changes.")
+            Button(onClick = onCheckChanges, enabled = !monitoring) {
+                Text(if (monitoring) "Checking..." else "Check for changes")
+            }
+            Text("Events: " + events.size)
+            events.takeLast(5).reversed().forEach { event ->
+                Text(event.type.name + " — " + event.ipAddress + " — " + event.detail)
             }
         }
     }
