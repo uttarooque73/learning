@@ -306,6 +306,14 @@ Phase 10 — complete for current MVP:
 - dashboard baseline evaluation
 - explicit limitation: results are security baseline assessments, not formal certification claims
 
+Phase 11 — complete for current MVP:
+- local network profiles
+- asset names, tags, and notes data model
+- administrative event log capped at 200 events
+- local persistence for administration metadata
+- dashboard administration section
+- no backend/account synchronization dependency yet
+
 Next:
-- Phase 11 Advanced Administration
+- Phase 12 Security, Performance & Release
 
