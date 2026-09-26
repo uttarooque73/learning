@@ -281,6 +281,14 @@ Phase 7 — complete for current MVP:
 - finding-level Verify action
 - explicit safety boundary documentation
 
+Phase 8 — complete for current MVP:
+- local audit snapshot/history storage
+- deterministic text report generation
+- executive summary with risk and severity counts
+- finding evidence, remediation, and verification in reports
+- report/history UI
+- history capped to the latest 20 audits
+
 Next:
-- Phase 8 Reports & Audit History
+- Phase 9 Monitoring & Alerts
 
