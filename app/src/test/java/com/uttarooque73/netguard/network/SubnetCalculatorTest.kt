@@ -26,8 +26,13 @@ class SubnetCalculatorTest {
         assertEquals("10.20.0.0/16", SubnetCalculator.networkCidr("10.20.7.25", 16))
     }
 
+    @Test fun networkCidrSupportsValidPrefixes() {
+        assertEquals("10.0.0.0/23", SubnetCalculator.networkCidr("10.0.0.5", 23))
+        assertEquals("10.20.0.0/16", SubnetCalculator.networkCidr("10.20.7.25", 16))
+    }
+
     @Test fun networkCidrRejectsInvalidInput() {
         assertEquals(null, SubnetCalculator.networkCidr("10.0.0.999", 24))
-        assertEquals(null, SubnetCalculator.networkCidr("10.0.0.5", 23))
+        assertEquals(null, SubnetCalculator.networkCidr("10.0.0.5", 31))
     }
 }
