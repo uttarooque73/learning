@@ -586,6 +586,7 @@ private fun DevicesScreen(
                 }
             }
         }
+        }
     }
 }
 
