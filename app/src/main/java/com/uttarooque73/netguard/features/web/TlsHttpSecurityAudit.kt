@@ -8,6 +8,7 @@ data class TlsAuditResult(
     val url: String,
     val reachable: Boolean,
     val protocol: String?,
+    val cipherSuite: String?,
     val certificateSubject: String?,
     val certificateIssuer: String?,
     val expiresAtEpochMs: Long?,
@@ -35,9 +36,12 @@ object TlsHttpSecurityAudit {
             connection.readTimeout = timeoutMs
             connection.requestMethod = "GET"
             connection.connect()
+            val session = connection.session
             val cert = connection.serverCertificates.firstOrNull() as? java.security.cert.X509Certificate
             val evidence = buildList {
-                add("HTTPS endpoint reachable; negotiated TLS protocol is not exposed by HttpsURLConnection.")
+                add("HTTPS endpoint reachable.")
+                add("Negotiated TLS protocol: " + session.protocol)
+                add("Negotiated cipher suite: " + session.cipherSuite)
                 cert?.let {
                     add("Certificate subject: " + it.subjectX500Principal.name)
                     add("Certificate issuer: " + it.issuerX500Principal.name)
@@ -47,7 +51,8 @@ object TlsHttpSecurityAudit {
             TlsAuditResult(
                 url = url,
                 reachable = true,
-                protocol = null,
+                protocol = session.protocol,
+                cipherSuite = session.cipherSuite,
                 certificateSubject = cert?.subjectX500Principal?.name,
                 certificateIssuer = cert?.issuerX500Principal?.name,
                 expiresAtEpochMs = cert?.notAfter?.time,
