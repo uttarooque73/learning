@@ -657,14 +657,6 @@ private fun Dashboard(
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = { onSelectScreen(Screen.Dashboard) }) { Text("Dashboard") }
-            TextButton(onClick = { onSelectScreen(Screen.Network) }) { Text("Network") }
-            TextButton(onClick = { onSelectScreen(Screen.Devices) }) { Text("Devices (" + devices.size + ")") }
-            TextButton(onClick = { onSelectScreen(Screen.Mobile) }) { Text("Mobile") }
-            TextButton(onClick = { onSelectScreen(Screen.Advanced) }) { Text("Advanced") }
-        }
-
         when (selectedScreen) {
             Screen.Dashboard -> {
                 Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
@@ -706,12 +698,12 @@ private fun Dashboard(
                 }
 
                 RiskDashboard(findings, onSelectFinding)
-                ReportSection(auditHistory, latestReport, onCreateReport)
-                MonitoringSection(monitoring, monitorEvents, onCheckChanges)
-                BaselineSection(baselineResults, onEvaluateBaseline)
-                AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
-                MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
-                selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Security workflow", style = MaterialTheme.typography.titleMedium)
+                        Text("Open the navigation drawer to access each security capability.")
+                    }
+                }
             }
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
