@@ -36,6 +36,9 @@ import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
 import com.uttarooque73.netguard.network.NetworkInventoryStore
+import com.uttarooque73.netguard.audit.DiscoveredService
+import com.uttarooque73.netguard.audit.ServiceAudit
+import com.uttarooque73.netguard.audit.ServiceAuditStore
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -45,6 +48,9 @@ class MainActivity : ComponentActivity() {
     private var discoveryError by mutableStateOf<String?>(null)
     private var selectedScreen by mutableStateOf(Screen.Dashboard)
     private lateinit var inventoryStore: NetworkInventoryStore
+    private lateinit var serviceStore: ServiceAuditStore
+    private var services by mutableStateOf<List<DiscoveredService>>(emptyList())
+    private var auditingIp by mutableStateOf<String?>(null)
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -55,6 +61,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         inventoryStore = NetworkInventoryStore(this)
+        serviceStore = ServiceAuditStore(this)
+        services = serviceStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -66,7 +74,10 @@ class MainActivity : ComponentActivity() {
                 discoveryError = discoveryError,
                 selectedScreen = selectedScreen,
                 onSelectScreen = { selectedScreen = it },
-                onDiscoverDevices = ::discoverDevices
+                onDiscoverDevices = ::discoverDevices,
+                services = services,
+                auditingIp = auditingIp,
+                onAuditDevice = ::auditDevice
             )
         }
     }
@@ -89,6 +100,19 @@ class MainActivity : ComponentActivity() {
                 inventoryStore.clearDevices()
             }
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
+    }
+
+    private fun auditDevice(ipAddress: String) {
+        lifecycleScope.launch {
+            auditingIp = ipAddress
+            runCatching { ServiceAudit().audit(ipAddress) }
+                .onSuccess { found ->
+                    services = services.filterNot { it.ipAddress == ipAddress } + found
+                    serviceStore.save(services)
+                }
+                .onFailure { discoveryError = it.message ?: "Service audit failed." }
+            auditingIp = null
+        }
     }
 
     private fun discoverDevices() {
@@ -119,7 +143,10 @@ fun NetGuardApp(
     selectedScreen: Screen,
     onSelectScreen: (Screen) -> Unit,
     onStartAudit: () -> Unit,
-    onDiscoverDevices: () -> Unit
+    onDiscoverDevices: () -> Unit,
+    services: List<DiscoveredService>,
+    auditingIp: String?,
+    onAuditDevice: (String) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -132,7 +159,10 @@ fun NetGuardApp(
                 selectedScreen = selectedScreen,
                 onSelectScreen = onSelectScreen,
                 onStartAudit = onStartAudit,
-                onDiscoverDevices = onDiscoverDevices
+                onDiscoverDevices = onDiscoverDevices,
+                services = services,
+                auditingIp = auditingIp,
+                onAuditDevice = onAuditDevice
             )
         }
     }
@@ -148,7 +178,10 @@ private fun Dashboard(
     selectedScreen: Screen,
     onSelectScreen: (Screen) -> Unit,
     onStartAudit: () -> Unit,
-    onDiscoverDevices: () -> Unit
+    onDiscoverDevices: () -> Unit,
+    services: List<DiscoveredService>,
+    auditingIp: String?,
+    onAuditDevice: (String) -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -210,7 +243,7 @@ private fun Dashboard(
                 }
             }
             Screen.Network -> NetworkScreen(networkInfo)
-            Screen.Devices -> DevicesScreen(devices, isDiscovering)
+            Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice)
         }
     }
 }
@@ -240,11 +273,19 @@ private fun NetworkScreen(networkInfo: NetworkInfo?) {
 }
 
 @Composable
-private fun DevicesScreen(devices: List<DiscoveredDevice>, isDiscovering: Boolean) {
+private fun DevicesScreen(
+    devices: List<DiscoveredDevice>,
+    isDiscovering: Boolean,
+    services: List<DiscoveredService>,
+    auditingIp: String?,
+    onAuditDevice: (String) -> Unit
+) {
     Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
     if (isDiscovering) CircularProgressIndicator()
     if (!isDiscovering && devices.isEmpty()) Text("No reachable devices have been discovered.")
+
     devices.forEach { device ->
+        val deviceServices = services.filter { it.ipAddress == device.ipAddress }
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
@@ -252,6 +293,20 @@ private fun DevicesScreen(devices: List<DiscoveredDevice>, isDiscovering: Boolea
                 Text("Hostname: " + (device.hostname ?: "Unavailable"))
                 if (device.discoveredAtEpochMs > 0) {
                     Text("Discovered: " + DateFormat.getDateTimeInstance().format(Date(device.discoveredAtEpochMs)))
+                }
+                Button(
+                    onClick = { onAuditDevice(device.ipAddress) },
+                    enabled = auditingIp == null
+                ) {
+                    Text(if (auditingIp == device.ipAddress) "Auditing…" else "Audit Services")
+                }
+                if (deviceServices.isNotEmpty()) {
+                    Text("Open services", style = MaterialTheme.typography.titleSmall)
+                    deviceServices.forEach { service ->
+                        Text(service.port.toString() + "/"+service.protocol + " — " + service.serviceName)
+                    }
+                } else {
+                    Text("No audited services recorded")
                 }
             }
         }
