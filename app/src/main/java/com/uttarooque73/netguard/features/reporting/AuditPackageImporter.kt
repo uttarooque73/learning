@@ -3,6 +3,9 @@ package com.uttarooque73.netguard.features.reporting
 import com.uttarooque73.netguard.audit.DiscoveredService
 import com.uttarooque73.netguard.audit.Finding
 import com.uttarooque73.netguard.audit.FindingConfidence
+import com.uttarooque73.netguard.features.policy.CustomPolicy
+import com.uttarooque73.netguard.features.policy.CustomPolicyEvaluation
+import com.uttarooque73.netguard.features.policy.CustomPolicyRuleType
 import com.uttarooque73.netguard.audit.FindingSeverity
 import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkInfo
@@ -52,7 +55,8 @@ object AuditPackageImporter {
         val findings = parseFindings(json.optJSONArray("findings") ?: JSONArray())
         val remediations = parseRemediations(json.optJSONArray("remediations") ?: JSONArray())
         val verifications = parseVerifications(json.optJSONArray("verifications") ?: JSONArray())
-        val totalItems = devices.size + services.size + findings.size + remediations.size + verifications.size
+        val customPolicies = parseCustomPolicyEvaluations(json.optJSONArray("customPolicyEvaluations") ?: JSONArray())
+        val totalItems = devices.size + services.size + findings.size + remediations.size + verifications.size + customPolicies.size
         require(totalItems <= MAX_TOTAL_ITEMS) { "Audit package contains too many records." }
         return AuditSnapshot(
             id = requireText(json, "id"),
@@ -62,7 +66,8 @@ object AuditPackageImporter {
             services = services,
             findings = findings,
             remediationRecords = remediations,
-            verificationResults = verifications
+            verificationResults = verifications,
+            customPolicyEvaluations = customPolicies
         )
     }
 
@@ -134,6 +139,31 @@ object AuditPackageImporter {
         return List(array.length()) { i ->
             val item = array.getJSONObject(i)
             VerificationResult(requireText(item, "findingId"), requireText(item, "ipAddress"), enumValue(item.getString("status"), VerificationStatus.values()), item.optString("beforeEvidence"), item.optString("afterEvidence"), item.optLong("verifiedAtEpochMs"))
+        }
+    }
+
+    private fun parseCustomPolicyEvaluations(array: JSONArray): List<CustomPolicyEvaluation> {
+        require(array.length() <= MAX_ITEMS) { "Too many custom policy evaluations in audit package." }
+        return List(array.length()) { i ->
+            val item = array.getJSONObject(i)
+            val ruleType = enumValue(item.optString("ruleType", "INFORMATIONAL"), CustomPolicyRuleType.values())
+            val port = if (item.has("port") && !item.isNull("port")) item.getInt("port") else null
+            require(ruleType != CustomPolicyRuleType.BLOCK_PORT || port in 1..65535) {
+                "Invalid custom policy port."
+            }
+            val policy = CustomPolicy(
+                id = requireText(item, "id"),
+                title = requireText(item, "title"),
+                description = requireText(item, "description"),
+                ruleType = ruleType,
+                port = port,
+                enabled = item.optBoolean("enabled", true)
+            )
+            CustomPolicyEvaluation(
+                policy = policy,
+                passed = item.optBoolean("passed"),
+                evidence = item.optString("evidence")
+            )
         }
     }
 
