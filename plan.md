@@ -314,6 +314,18 @@ Phase 11 — complete for current MVP:
 - dashboard administration section
 - no backend/account synchronization dependency yet
 
-Next:
-- Phase 12 Security, Performance & Release
+Phase 12 — hardening foundation complete:
+- Android backup disabled
+- cleartext traffic disabled by default
+- privacy/security policy definitions
+- release checks and unit test
+- release hardening checklist
+- bounded discovery/service audit behavior documented
+
+Remaining release work:
+- CI Android build/test execution
+- physical-device compatibility testing
+- runtime permission review
+- release build validation
+
 
