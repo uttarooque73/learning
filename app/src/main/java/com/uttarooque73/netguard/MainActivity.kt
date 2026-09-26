@@ -192,6 +192,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         appLockPolicyStore = AppLockPolicyStore(this)
+        appLocked = appLockPolicyStore.load().enabled
         inventoryStore = NetworkInventoryStore(this)
         serviceStore = ServiceAuditStore(this)
         findingStore = FindingStore(this)
@@ -220,7 +221,10 @@ class MainActivity : FragmentActivity() {
         devices = inventoryStore.loadDevices()
         mobileSecurity = MobileSecurityAudit.inspect(this)
         setContent {
-            NetGuardApp(
+            if (appLocked) {
+                LockScreen(onUnlock = ::authenticateApp)
+            } else {
+                NetGuardApp(
                 networkInfo = networkInfo,
                 devices = devices,
                 isDiscovering = isDiscovering,
@@ -271,7 +275,8 @@ class MainActivity : FragmentActivity() {
                 dnsSecurity = dnsSecurity,
                 vulnerabilityCandidates = vulnerabilityCandidates,
                 riskTrend = riskTrend
-            )
+                )
+            }
         }
     }
 
