@@ -32,6 +32,14 @@ object AuditReportGenerator {
             val verification = snapshot.verificationResults.lastOrNull { it.findingId == finding.id && it.ipAddress == finding.ipAddress }
             lines += "  Verification: ${verification?.status ?: "NOT_VERIFIED"}"
         }
+        if (snapshot.customPolicyEvaluations.isNotEmpty()) {
+            lines += ""
+            lines += "CUSTOM POLICY EVALUATION"
+            snapshot.customPolicyEvaluations.forEach { evaluation ->
+                lines += "- " + evaluation.policy.id + ": " + if (evaluation.passed) "PASS" else "FAIL"
+                lines += "  Evidence: " + evaluation.evidence
+            }
+        }
         lines += ""
         lines += "REMEDIATION HISTORY"
         snapshot.remediationRecords.forEach { record ->
