@@ -26,6 +26,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -515,7 +520,29 @@ fun NetGuardApp(
     timelineEvents: List<SecurityTimelineEvent>
 ) {
     MaterialTheme {
-        Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
+        ModalNavigationDrawer(
+            drawerContent = {
+                ModalDrawerSheet {
+                    Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
+                    HorizontalDivider()
+                    val screens = listOf(
+                        Screen.Dashboard, Screen.Network, Screen.Devices, Screen.Services,
+                        Screen.Findings, Screen.Remediation, Screen.Monitoring, Screen.Baseline,
+                        Screen.Mobile, Screen.Wifi, Screen.Web, Screen.Policies, Screen.Timeline,
+                        Screen.Reports, Screen.Administration, Screen.Learning, Screen.Advanced
+                    )
+                    screens.forEach { screen ->
+                        NavigationDrawerItem(
+                            label = { Text(screenTitle(screen)) },
+                            selected = selectedScreen == screen,
+                            onClick = { selectedScreen = screen },
+                            colors = NavigationDrawerItemDefaults.colors()
+                        )
+                    }
+                }
+            }
+        ) {
+            Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }) }) { padding ->
             Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
@@ -687,7 +714,7 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, Network, Devices, Mobile, Advanced }
+enum class Screen { Dashboard, Network, Devices, Services, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
