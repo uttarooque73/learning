@@ -570,7 +570,7 @@ fun NetGuardApp(
                 }
             }
         ) {
-            Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }) }) { padding ->
+            Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { TextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
             Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
