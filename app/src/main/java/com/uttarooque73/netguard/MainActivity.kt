@@ -99,6 +99,15 @@ import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
 import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
+import com.uttarooque73.netguard.features.intelligence.NetworkTopology
+import com.uttarooque73.netguard.features.intelligence.NetworkTopologyBuilder
+import com.uttarooque73.netguard.features.intelligence.RiskTrendPoint
+import com.uttarooque73.netguard.features.intelligence.RiskTrendCalculator
+import com.uttarooque73.netguard.features.network.DnsSecurityAnalyzer
+import com.uttarooque73.netguard.features.network.DnsSecurityResult
+import com.uttarooque73.netguard.features.vulnerability.CandidateVulnerabilityMapper
+import com.uttarooque73.netguard.features.vulnerability.VulnerabilityCandidate
+import com.uttarooque73.netguard.ui.IntelligenceScreen
 import com.uttarooque73.netguard.ui.ServicesFeatureScreen
 import com.uttarooque73.netguard.ui.FindingsFeatureScreen
 import com.uttarooque73.netguard.ui.RemediationFeatureScreen
@@ -149,6 +158,10 @@ class MainActivity : ComponentActivity() {
     private var tlsResult by mutableStateOf<TlsAuditResult?>(null)
     private var httpResult by mutableStateOf<HttpSecurityResult?>(null)
     private var policyResults by mutableStateOf<List<PolicyResult>>(emptyList())
+    private var topology by mutableStateOf<NetworkTopology?>(null)
+    private var dnsSecurity by mutableStateOf<DnsSecurityResult?>(null)
+    private var vulnerabilityCandidates by mutableStateOf<List<VulnerabilityCandidate>>(emptyList())
+    private var riskTrend by mutableStateOf<List<RiskTrendPoint>>(emptyList())
     private var selectedPolicyProfile by mutableStateOf("Home")
     private lateinit var timelineStore: SecurityTimelineStore
     private var timelineEvents by mutableStateOf<List<SecurityTimelineEvent>>(emptyList())
@@ -419,6 +432,7 @@ class MainActivity : ComponentActivity() {
         auditHistory = (auditHistory + entry).takeLast(20)
         auditHistoryStore.save(snapshot)
         latestReport = AuditReportGenerator.generate(snapshot)
+        riskTrend = riskTrend + RiskTrendPoint(snapshot.createdAtEpochMs, RiskCalculator.score(findings), findings.size)
         recordTimeline("report", "Audit report created", "Report ${snapshot.id}")
     }
     private fun verifyFinding(finding: Finding) {
@@ -715,6 +729,7 @@ private fun Dashboard(
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
+            Screen.Intelligence -> IntelligenceScreen(devices, services, topology, dnsSecurity, vulnerabilityCandidates, riskTrend)
             Screen.Findings -> FindingsFeatureScreen(findings) { onSelectFinding(it) }
             Screen.Remediation -> RemediationFeatureScreen(findings, remediationRecords, onStartRemediation, verificationResults, onVerifyFinding, verifyingFindingId)
             Screen.Monitoring -> MonitoringSection(monitoring, monitorEvents, onCheckChanges)
@@ -732,13 +747,14 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, Network, Devices, Services, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
+enum class Screen { Dashboard, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 private fun screenTitle(screen: Screen): String = when (screen) {
     Screen.Dashboard -> "Overview"
     Screen.Network -> "Network"
     Screen.Devices -> "Devices"
     Screen.Services -> "Services"
+    Screen.Intelligence -> "Security Intelligence"
     Screen.Findings -> "Findings"
     Screen.Remediation -> "Remediation"
     Screen.Monitoring -> "Monitoring"
