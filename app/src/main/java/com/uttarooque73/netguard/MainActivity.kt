@@ -252,7 +252,11 @@ class MainActivity : ComponentActivity() {
                 onSelectPolicyProfile = { selectedPolicyProfile = it },
                 onRunAdvancedAudit = ::runAdvancedAudit,
                 onExportReport = ::exportReport,
-                timelineEvents = timelineEvents
+                timelineEvents = timelineEvents,
+                topology = topology,
+                dnsSecurity = dnsSecurity,
+                vulnerabilityCandidates = vulnerabilityCandidates,
+                riskTrend = riskTrend
             )
         }
     }
@@ -542,7 +546,11 @@ fun NetGuardApp(
     onSelectPolicyProfile: (String) -> Unit,
     onRunAdvancedAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit,
-    timelineEvents: List<SecurityTimelineEvent>
+    timelineEvents: List<SecurityTimelineEvent>,
+    topology: NetworkTopology?,
+    dnsSecurity: DnsSecurityResult?,
+    vulnerabilityCandidates: List<VulnerabilityCandidate>,
+    riskTrend: List<RiskTrendPoint>
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -616,7 +624,11 @@ fun NetGuardApp(
                 policyResults = policyResults,
                 onRunAdvancedAudit = onRunAdvancedAudit,
                 onExportReport = onExportReport,
-                timelineEvents = timelineEvents
+                timelineEvents = timelineEvents,
+                topology = topology,
+                dnsSecurity = dnsSecurity,
+                vulnerabilityCandidates = vulnerabilityCandidates,
+                riskTrend = riskTrend
             )
         }
     }
