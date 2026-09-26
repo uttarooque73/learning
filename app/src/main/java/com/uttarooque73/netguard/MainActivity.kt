@@ -878,7 +878,7 @@ private fun Dashboard(
             Screen.Reports -> ReportSection(auditHistory, latestReport, onCreateReport, onImportAuditPackage)
             Screen.Administration -> AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
             Screen.Learning -> LearningScreen()
-            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, onRunAdvancedAudit, onExportReport, timelineEvents, customPolicyEvaluations)
+            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents, customPolicyEvaluations)
         }
     }
 }
