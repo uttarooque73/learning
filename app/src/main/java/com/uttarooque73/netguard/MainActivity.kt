@@ -43,6 +43,10 @@ import com.uttarooque73.netguard.audit.Finding
 import com.uttarooque73.netguard.audit.FindingStore
 import com.uttarooque73.netguard.audit.ServiceFindingRules
 import com.uttarooque73.netguard.audit.RiskCalculator
+import com.uttarooque73.netguard.remediation.RemediationCatalog
+import com.uttarooque73.netguard.remediation.RemediationRecord
+import com.uttarooque73.netguard.remediation.RemediationStatus
+import com.uttarooque73.netguard.remediation.RemediationStore
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -57,6 +61,8 @@ class MainActivity : ComponentActivity() {
     private var auditingIp by mutableStateOf<String?>(null)
     private var findings by mutableStateOf<List<Finding>>(emptyList())
     private var selectedFinding by mutableStateOf<Finding?>(null)
+    private var remediationRecords by mutableStateOf<List<RemediationRecord>>(emptyList())
+    private lateinit var remediationStore: RemediationStore
     private lateinit var findingStore: FindingStore
 
     private val locationPermissionLauncher = registerForActivityResult(
@@ -70,8 +76,10 @@ class MainActivity : ComponentActivity() {
         inventoryStore = NetworkInventoryStore(this)
         serviceStore = ServiceAuditStore(this)
         findingStore = FindingStore(this)
+        remediationStore = RemediationStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
+        remediationRecords = remediationStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -89,7 +97,9 @@ class MainActivity : ComponentActivity() {
                 onAuditDevice = ::auditDevice,
                 findings = findings,
                 selectedFinding = selectedFinding,
-                onSelectFinding = { selectedFinding = it }
+                onSelectFinding = { selectedFinding = it },
+                remediationRecords = remediationRecords,
+                onStartRemediation = ::startRemediation
             )
         }
     }
@@ -112,6 +122,12 @@ class MainActivity : ComponentActivity() {
                 inventoryStore.clearDevices()
             }
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
+    }
+
+    private fun startRemediation(finding: Finding) {
+        val record = RemediationRecord(finding.id, finding.ipAddress, RemediationStatus.IN_PROGRESS)
+        remediationRecords = remediationRecords.filterNot { it.findingId == finding.id && it.ipAddress == finding.ipAddress } + record
+        remediationStore.save(remediationRecords)
     }
 
     private fun auditDevice(ipAddress: String) {
@@ -164,7 +180,9 @@ fun NetGuardApp(
     onAuditDevice: (String) -> Unit,
     findings: List<Finding>,
     selectedFinding: Finding?,
-    onSelectFinding: (Finding?) -> Unit
+    onSelectFinding: (Finding?) -> Unit,
+    remediationRecords: List<RemediationRecord>,
+    onStartRemediation: (Finding) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -183,7 +201,9 @@ fun NetGuardApp(
                 onAuditDevice = onAuditDevice,
                 findings = findings,
                 selectedFinding = selectedFinding,
-                onSelectFinding = onSelectFinding
+                onSelectFinding = onSelectFinding,
+                remediationRecords = remediationRecords,
+                onStartRemediation = onStartRemediation
             )
         }
     }
@@ -205,7 +225,9 @@ private fun Dashboard(
     onAuditDevice: (String) -> Unit,
     findings: List<Finding>,
     selectedFinding: Finding?,
-    onSelectFinding: (Finding?) -> Unit
+    onSelectFinding: (Finding?) -> Unit,
+    remediationRecords: List<RemediationRecord>,
+    onStartRemediation: (Finding) -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -258,7 +280,7 @@ private fun Dashboard(
                 }
 
                 RiskDashboard(findings, onSelectFinding)
-                selectedFinding?.let { FindingDetail(it, onSelectFinding) }
+                selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
@@ -358,6 +380,43 @@ private fun FindingDetail(finding: Finding, onClose: (Finding?) -> Unit) {
             Text("Explanation: " + finding.explanation)
             Text("Remediation: " + finding.remediation)
             Text("Verification: " + finding.verification)
+            TextButton(onClick = { onClose(null) }) { Text("Close") }
+        }
+    }
+}
+
+@Composable
+private fun FindingDetail(
+    finding: Finding,
+    onClose: (Finding?) -> Unit,
+    remediationRecords: List<RemediationRecord>,
+    onStartRemediation: (Finding) -> Unit
+) {
+    val playbook = RemediationCatalog.forFinding(finding.id)
+    val record = remediationRecords.lastOrNull { it.findingId == finding.id && it.ipAddress == finding.ipAddress }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(finding.title, style = MaterialTheme.typography.titleLarge)
+            Text("Severity: " + finding.severity.name)
+            Text("Confidence: " + finding.confidence.name)
+            Text("Asset: " + finding.ipAddress)
+            Text("Evidence: " + finding.evidence)
+            Text("Explanation: " + finding.explanation)
+            Text("Remediation: " + finding.remediation)
+            playbook?.let {
+                Text(it.title, style = MaterialTheme.typography.titleMedium)
+                Text("Why it matters: " + it.whyItMatters)
+                Text("Prerequisite: " + it.prerequisites.joinToString())
+                it.steps.forEachIndexed { index, step -> Text((index + 1).toString() + ". " + step) }
+                Text("Verification: " + it.verification)
+                Text("Status: " + (record?.status?.name ?: RemediationStatus.NOT_STARTED.name))
+                Button(
+                    onClick = { onStartRemediation(finding) },
+                    enabled = record?.status != RemediationStatus.IN_PROGRESS
+                ) {
+                    Text(if (record?.status == RemediationStatus.IN_PROGRESS) "Remediation in progress" else "Start guided remediation")
+                }
+            }
             TextButton(onClick = { onClose(null) }) { Text("Close") }
         }
     }
