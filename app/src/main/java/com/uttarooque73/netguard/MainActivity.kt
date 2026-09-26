@@ -418,7 +418,8 @@ class MainActivity : FragmentActivity() {
             services = services,
             findings = findings,
             remediationRecords = remediationRecords,
-            verificationResults = verificationResults
+            verificationResults = verificationResults,
+            customPolicyEvaluations = customPolicyEvaluations
         )
         val file = when (format) {
             "json" -> java.io.File(cacheDir, "netguard-audit-" + snapshot.id + ".json").also { it.writeText(AdvancedReportExporter.json(snapshot)) }
