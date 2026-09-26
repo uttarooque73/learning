@@ -154,46 +154,6 @@ private fun Dashboard(
         modifier = modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
-        Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
-
-        discoveryError?.let { error ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Text("Discovery error: $error", modifier = Modifier.padding(16.dp))
-            }
-        }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Current network", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                if (networkInfo == null) {
-                    Text("Not inspected yet")
-                    Text("Start an authorized network inspection to collect local network details.")
-                } else {
-                    Text("SSID: ${networkInfo.ssid ?: "Unavailable"}")
-                    Text("Local IP: ${networkInfo.localAddress ?: "Unavailable"}")
-                    Text("Gateway: ${networkInfo.gatewayAddress ?: "Unavailable"}")
-                    Text("Subnet: ${networkInfo.subnet ?: "Unavailable"}")
-                    Text("DNS: ${networkInfo.dnsServers.ifEmpty { listOf("Unavailable") }.joinToString()}")
-                    Text("Interface: ${networkInfo.interfaceName ?: "Unavailable"}")
-                }
-            }
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
-                Text(if (networkInfo == null) "Inspect Network" else "Refresh")
-            }
-            Button(
-                onClick = onDiscoverDevices,
-                enabled = networkInfo != null && !isDiscovering,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(if (isDiscovering) "Discovering…" else "Find Devices")
-            }
-        }
-
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             TextButton(onClick = { onSelectScreen(Screen.Dashboard) }) { Text("Dashboard") }
             TextButton(onClick = { onSelectScreen(Screen.Network) }) { Text("Network") }
@@ -204,21 +164,29 @@ private fun Dashboard(
             Screen.Dashboard -> {
                 Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
                 Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
+
                 discoveryError?.let { error ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Text("Discovery error: " + error, modifier = Modifier.padding(16.dp))
                     }
                 }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Current network", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
-                        Text("SSID: " + (networkInfo?.ssid ?: "Unavailable"))
-                        Text("Local IP: " + (networkInfo?.localAddress ?: "Unavailable"))
-                        Text("Gateway: " + (networkInfo?.gatewayAddress ?: "Unavailable"))
-                        Text("Subnet: " + (networkInfo?.subnet ?: "Unavailable"))
+                        if (networkInfo == null) {
+                            Text("Not inspected yet")
+                            Text("Start an authorized network inspection to collect local network details.")
+                        } else {
+                            Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
+                            Text("Local IP: " + (networkInfo.localAddress ?: "Unavailable"))
+                            Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
+                            Text("Subnet: " + (networkInfo.subnet ?: "Unavailable"))
+                        }
                     }
                 }
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
                         Text(if (networkInfo == null) "Inspect Network" else "Refresh")
@@ -231,6 +199,7 @@ private fun Dashboard(
                         Text(if (isDiscovering) "Discovering…" else "Find Devices")
                     }
                 }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Security posture", style = MaterialTheme.typography.titleMedium)
@@ -246,7 +215,7 @@ private fun Dashboard(
     }
 }
 
-private enum class Screen { Dashboard, Network, Devices }
+enum class Screen { Dashboard, Network, Devices }
 
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
