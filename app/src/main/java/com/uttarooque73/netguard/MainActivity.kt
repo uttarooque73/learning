@@ -1073,9 +1073,13 @@ private fun MobileSecuritySection(
             Text(if (running) "Auditing..." else "Refresh mobile audit")
         )
 
-        snapshot?.checks?.forEach { check ->
-            MobileSecurityCheckCard(check)
-        } ?: Text("Mobile security audit has not run yet.")
+        if (snapshot == null) {
+            Text("Mobile security audit has not run yet.")
+        } else {
+            snapshot.checks.forEach { check ->
+                MobileSecurityCheckCard(check)
+            }
+        }
     }
 }
 
