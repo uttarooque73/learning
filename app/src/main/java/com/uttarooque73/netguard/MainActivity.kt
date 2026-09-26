@@ -87,6 +87,7 @@ import com.uttarooque73.netguard.features.web.HttpSecurityResult
 import com.uttarooque73.netguard.features.policy.PolicyInput
 import com.uttarooque73.netguard.features.policy.PolicyResult
 import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
+import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 
@@ -130,6 +131,7 @@ class MainActivity : ComponentActivity() {
     private var tlsResult by mutableStateOf<TlsAuditResult?>(null)
     private var httpResult by mutableStateOf<HttpSecurityResult?>(null)
     private var policyResults by mutableStateOf<List<PolicyResult>>(emptyList())
+    private var selectedPolicyProfile by mutableStateOf("Home")
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -211,6 +213,8 @@ class MainActivity : ComponentActivity() {
                 tlsResult = tlsResult,
                 httpResult = httpResult,
                 policyResults = policyResults,
+                selectedPolicyProfile = selectedPolicyProfile,
+                onSelectPolicyProfile = { selectedPolicyProfile = it },
                 onRunAdvancedAudit = ::runAdvancedAudit,
                 onExportReport = ::exportReport
             )
@@ -326,7 +330,9 @@ class MainActivity : ComponentActivity() {
                 secureScreenLock = mobile?.checks?.firstOrNull { it.id == "MOB-DEV-003" }?.status ==
                     com.uttarooque73.netguard.mobile.MobileCheckStatus.PASS
             )
-            policyResults = SecurityPolicyEngine.evaluate(SecurityPolicyEngine.defaultRules(), input)
+            val profile = SecurityPolicyProfiles.defaults().firstOrNull { it.name == selectedPolicyProfile }
+                ?: SecurityPolicyProfiles.defaults().first()
+            policyResults = SecurityPolicyEngine.evaluate(profile.rules, input)
         }
     }
 
@@ -484,6 +490,8 @@ fun NetGuardApp(
     tlsResult: TlsAuditResult?,
     httpResult: HttpSecurityResult?,
     policyResults: List<PolicyResult>,
+    selectedPolicyProfile: String,
+    onSelectPolicyProfile: (String) -> Unit,
     onRunAdvancedAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit
 ) {
@@ -959,6 +967,8 @@ private fun AdvancedSecuritySection(
     tls: TlsAuditResult?,
     http: HttpSecurityResult?,
     policies: List<PolicyResult>,
+    selectedPolicyProfile: String,
+    onSelectPolicyProfile: (String) -> Unit,
     onRunAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit
 ) {
@@ -1023,6 +1033,11 @@ private fun AdvancedSecuritySection(
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Security policies", style = MaterialTheme.typography.titleMedium)
+                Text("Profile: " + selectedPolicyProfile)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onSelectPolicyProfile("Home") }) { Text("Home") }
+                    TextButton(onClick = { onSelectPolicyProfile("Work") }) { Text("Work") }
+                }
                 policies.forEach { Text(it.status.name + " — " + it.title) }
             }
         }
