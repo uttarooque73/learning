@@ -37,6 +37,8 @@ The application is a defensive security auditing tool for networks and devices t
 
 - Detect the active network and permitted Wi-Fi information.
 - Collect available local IP, gateway, DNS, subnet, and network metadata.
+- Assess active cellular transport and mobile-network state where Android exposes it.
+- Assess device security features such as VPN, Private DNS, screen lock, Developer Options, and USB debugging.
 - Discover authorized devices using safe local-network techniques.
 - Create an asset inventory.
 
@@ -315,6 +317,9 @@ Phase 11 — complete for current MVP:
 - no backend/account synchronization dependency yet
 
 Phase 12 — hardening foundation complete:
+- mobile/cellular security posture audit
+- Android device security feature checks
+- evidence-backed mobile remediation and verification guidance
 - Android backup disabled
 - cleartext traffic disabled by default
 - privacy/security policy definitions
