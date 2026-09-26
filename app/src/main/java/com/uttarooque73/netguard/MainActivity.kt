@@ -31,10 +31,14 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -527,7 +531,10 @@ fun NetGuardApp(
     timelineEvents: List<SecurityTimelineEvent>
 ) {
     MaterialTheme {
+        val drawerState = rememberDrawerState(DrawerValue.Closed)
+        val drawerScope = rememberCoroutineScope()
         ModalNavigationDrawer(
+            drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
                     Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
@@ -542,7 +549,7 @@ fun NetGuardApp(
                         NavigationDrawerItem(
                             label = { Text(screenTitle(screen)) },
                             selected = selectedScreen == screen,
-                            onClick = { selectedScreen = screen },
+                            onClick = { selectedScreen = screen; drawerScope.launch { drawerState.close() } },
                             colors = NavigationDrawerItemDefaults.colors()
                         )
                     }
