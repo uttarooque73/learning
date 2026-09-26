@@ -103,6 +103,7 @@ import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
 import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
+import com.uttarooque73.netguard.features.reporting.AuditPackageImporter
 import com.uttarooque73.netguard.features.intelligence.NetworkTopology
 import com.uttarooque73.netguard.features.intelligence.NetworkTopologyBuilder
 import com.uttarooque73.netguard.features.intelligence.RiskTrendPoint
@@ -183,6 +184,12 @@ class MainActivity : FragmentActivity() {
     private var backgroundedAtElapsedMs = 0L
     private var timelineEvents by mutableStateOf<List<SecurityTimelineEvent>>(emptyList())
 
+    private val auditPackageLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) importAuditPackage(uri)
+    }
+
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -251,6 +258,7 @@ class MainActivity : FragmentActivity() {
                 auditHistory = auditHistory,
                 latestReport = latestReport,
                 onCreateReport = ::createReport,
+                onImportAuditPackage = ::launchAuditPackageImport,
                 monitoring = monitoring,
                 monitorEvents = monitorEvents,
                 onCheckChanges = ::checkForChanges,
@@ -421,6 +429,26 @@ class MainActivity : FragmentActivity() {
             },
             "Share NetGuard report"
         ))
+    }
+
+    private fun launchAuditPackageImport() {
+        auditPackageLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+    }
+
+    private fun importAuditPackage(uri: android.net.Uri) {
+        lifecycleScope.launch {
+            runCatching {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    AuditPackageImporter.readSnapshot(input)
+                } ?: error("Unable to open audit package.")
+            }.onSuccess { snapshot ->
+                auditHistoryStore.save(snapshot)
+                auditHistory = auditHistoryStore.load()
+                recordTimeline("report", "Audit package imported", "Imported audit ${snapshot.id}")
+            }.onFailure {
+                discoveryError = "Audit import failed: " + (it.message ?: "invalid package")
+            }
+        }
     }
 
     private fun runAdvancedAudit(url: String?) {
@@ -604,6 +632,7 @@ fun NetGuardApp(
     auditHistory: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
     latestReport: String?,
     onCreateReport: () -> Unit,
+    onImportAuditPackage: () -> Unit,
     monitoring: Boolean,
     monitorEvents: List<MonitorEvent>,
     onCheckChanges: () -> Unit,
@@ -838,7 +867,7 @@ private fun Dashboard(
             Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
             Screen.Policies -> PolicyFeatureScreen(policyResults, selectedPolicyProfile, onSelectPolicyProfile)
             Screen.Timeline -> TimelineFeatureScreen(timelineEvents)
-            Screen.Reports -> ReportSection(auditHistory, latestReport, onCreateReport)
+            Screen.Reports -> ReportSection(auditHistory, latestReport, onCreateReport, onImportAuditPackage)
             Screen.Administration -> AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
             Screen.Learning -> LearningScreen()
             Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents, customPolicyEvaluations)
@@ -1051,12 +1080,14 @@ private fun FindingDetail(
 private fun ReportSection(
     history: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
     latestReport: String?,
-    onCreateReport: () -> Unit
+    onCreateReport: () -> Unit,
+    onImportAuditPackage: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Reports & audit history", style = MaterialTheme.typography.titleMedium)
             Button(onClick = onCreateReport) { Text("Create audit report") }
+            Button(onClick = onImportAuditPackage) { Text("Import audit package") }
             Text("Saved audits: " + history.size)
             history.takeLast(5).reversed().forEach { entry ->
                 Text(entry.id + " — devices " + entry.deviceCount + ", services " + entry.serviceCount + ", findings " + entry.findingCount)
