@@ -1,48 +1,32 @@
 package com.uttarooque73.netguard.network
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
 
 class DeviceDiscovery(
-    private val connectTimeoutMs: Int = 250
+    private val connectTimeoutMs: Int = 250,
+    private val maxConcurrentChecks: Int = 32
 ) {
-    suspend fun discover(localIp: String, prefixLength: Int): List<DiscoveredDevice> = withContext(Dispatchers.IO) {
-        if (prefixLength !in 1..30) return@withContext emptyList()
+    suspend fun discover(localIp: String, prefixLength: Int): List<DiscoveredDevice> =
+        withContext(Dispatchers.IO) {
+            val hosts = SubnetCalculator.hosts(localIp, prefixLength)
+            if (hosts.isEmpty()) return@withContext emptyList()
 
-        val addressBytes = localIp.split('.').mapNotNull { it.toIntOrNull() }
-        if (addressBytes.size != 4 || addressBytes.any { it !in 0..255 }) {
-            return@withContext emptyList()
-        }
-
-        val hostBits = 32 - prefixLength
-        val networkSize = 1L shl hostBits
-        if (networkSize > 256L) return@withContext emptyList()
-
-        val localValue = addressBytes.fold(0L) { acc, octet -> (acc shl 8) or octet.toLong() }
-        val mask = (-1L shl hostBits) and 0xffffffffL
-        val network = localValue and mask
-        val first = if (networkSize > 2) network + 1 else network
-        val last = if (networkSize > 2) network + networkSize - 2 else network + networkSize - 1
-
-        val results = mutableListOf<DiscoveredDevice>()
-        for (value in first..last) {
-            val ip = listOf(
-                (value shr 24) and 255,
-                (value shr 16) and 255,
-                (value shr 8) and 255,
-                value and 255
-            ).joinToString(".")
-
-            if (ip == localIp) continue
-
-            if (isReachable(ip)) {
-                results += DiscoveredDevice(ipAddress = ip, reachable = true)
+            coroutineScope {
+                hosts.chunked(maxConcurrentChecks.coerceAtLeast(1)).flatMap { batch ->
+                    batch.map { ip ->
+                        async(Dispatchers.IO) {
+                            if (isReachable(ip)) DiscoveredDevice(ipAddress = ip, reachable = true) else null
+                        }
+                    }.awaitAll().filterNotNull()
+                }
             }
         }
-        results
-    }
 
     private fun isReachable(ip: String): Boolean = try {
         Socket().use { socket ->
