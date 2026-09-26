@@ -1207,6 +1207,8 @@ private fun AdvancedSecuritySection(
     var customId by remember { mutableStateOf("") }
     var customTitle by remember { mutableStateOf("") }
     var customDescription by remember { mutableStateOf("") }
+    var customRuleType by remember { mutableStateOf(CustomPolicyRuleType.INFORMATIONAL) }
+    var customPort by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 32.dp),
@@ -1266,14 +1268,37 @@ private fun AdvancedSecuritySection(
                 androidx.compose.material3.OutlinedTextField(value = customId, onValueChange = { customId = it }, label = { Text("Policy ID") }, modifier = Modifier.fillMaxWidth())
                 androidx.compose.material3.OutlinedTextField(value = customTitle, onValueChange = { customTitle = it }, label = { Text("Title") }, modifier = Modifier.fillMaxWidth())
                 androidx.compose.material3.OutlinedTextField(value = customDescription, onValueChange = { customDescription = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+                TextButton(onClick = {
+                    customRuleType = when (customRuleType) {
+                        CustomPolicyRuleType.INFORMATIONAL -> CustomPolicyRuleType.BLOCK_PORT
+                        CustomPolicyRuleType.BLOCK_PORT -> CustomPolicyRuleType.REQUIRE_HTTPS
+                        CustomPolicyRuleType.REQUIRE_HTTPS -> CustomPolicyRuleType.INFORMATIONAL
+                    }
+                }) { Text("Rule type: " + customRuleType.name) }
+                if (customRuleType == CustomPolicyRuleType.BLOCK_PORT) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = customPort,
+                        onValueChange = { customPort = it.filter(Char::isDigit).take(5) },
+                        label = { Text("Port") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Button(onClick = {
                     runCatching {
-                        customStore.upsert(CustomPolicy(customId.trim(), customTitle.trim(), customDescription.trim()))
+                        CustomPolicy(
+                            id = customId.trim(),
+                            title = customTitle.trim(),
+                            description = customDescription.trim(),
+                            ruleType = customRuleType,
+                            port = if (customRuleType == CustomPolicyRuleType.BLOCK_PORT) customPort.toIntOrNull() else null
+                        ).also(customStore::upsert)
                     }.onSuccess {
                         customPolicies = customStore.load()
                         customId = ""
                         customTitle = ""
                         customDescription = ""
+                        customPort = ""
+                        customRuleType = CustomPolicyRuleType.INFORMATIONAL
                     }
                 }) { Text("Save policy") }
                 customPolicyEvaluations.forEach { evaluation ->
