@@ -638,6 +638,7 @@ fun NetGuardApp(
         }
     }
 }
+}
 
 @Composable
 private fun Dashboard(
