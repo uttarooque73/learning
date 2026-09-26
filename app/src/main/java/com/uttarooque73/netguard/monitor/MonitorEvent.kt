@@ -1,0 +1,11 @@
+package com.uttarooque73.netguard.monitor
+
+enum class MonitorEventType { NEW_DEVICE, NEW_SERVICE, SERVICE_REMOVED, FINDING_CHANGED }
+
+data class MonitorEvent(
+    val id: String,
+    val type: MonitorEventType,
+    val ipAddress: String,
+    val detail: String,
+    val createdAtEpochMs: Long = System.currentTimeMillis()
+)
