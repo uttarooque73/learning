@@ -159,7 +159,7 @@ class MainActivity : ComponentActivity() {
         )
         val entry = com.uttarooque73.netguard.report.AuditHistoryEntry(snapshot.id, snapshot.createdAtEpochMs, snapshot.devices.size, snapshot.services.size, snapshot.findings.size)
         auditHistory = (auditHistory + entry).takeLast(20)
-        auditHistoryStore.save(listOf(snapshot))
+        auditHistoryStore.save(snapshot)
         latestReport = AuditReportGenerator.generate(snapshot)
     }
     private fun verifyFinding(finding: Finding) {
