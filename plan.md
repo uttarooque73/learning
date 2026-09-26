@@ -236,18 +236,51 @@ Build each phase so that it is independently testable. Do not build the entire s
 
 ### Current implementation status
 
-Phase 3 implementation has started:
-- bounded TCP service audit for a conservative catalog of common ports
-- service model with IP, port, protocol, service name, reachability, and timestamp
-- local persistence for service inventory
-- per-device service audit action in the Devices screen
-- service catalog unit coverage
+Phase 0 — complete:
+- product scope and authorized-use boundary documented
+- architecture and security data model established
 
-Remaining Phase 3 work:
-- richer service evidence
-- audit timestamps and scan sessions
-- explicit target authorization state
-- service inventory filtering/sorting
-- finding generation from exposed services
-- dedicated Services/Exposure screen
-- integration tests on real Android network interfaces
+Phase 1 — complete:
+- Android project/build configuration
+- Compose dashboard and navigation
+- permissions and local persistence foundations
+
+Phase 2 — complete for MVP:
+- active network inspection
+- bounded local device discovery
+- network/device inventory persistence
+- device hostname and discovery timestamps
+
+Phase 3 — complete for MVP:
+- bounded TCP checks against a conservative service catalog
+- service inventory persistence
+- per-device service audit UI
+- service timestamps
+
+Phase 4 — complete for current MVP:
+- deterministic service finding rules
+- finding severity/confidence/evidence/remediation/verification data
+- finding persistence and tests
+
+Phase 5 — complete for current MVP:
+- security posture score
+- severity breakdown
+- finding details and evidence
+- traceable risk calculation
+
+Phase 6 — complete for current MVP:
+- guided remediation playbooks
+- prerequisites and verification guidance
+- remediation status persistence
+- no automatic remote configuration changes
+
+Phase 7 — complete for current MVP:
+- defensive service rechecks
+- before/after evidence
+- verification status persistence
+- finding-level Verify action
+- explicit safety boundary documentation
+
+Next:
+- Phase 8 Reports & Audit History
+
