@@ -1,6 +1,7 @@
 package com.uttarooque73.netguard.report
 
 import com.uttarooque73.netguard.audit.DiscoveredService
+import com.uttarooque73.netguard.features.policy.CustomPolicyEvaluation
 import com.uttarooque73.netguard.audit.Finding
 import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkInfo
@@ -15,5 +16,6 @@ data class AuditSnapshot(
     val services: List<DiscoveredService>,
     val findings: List<Finding>,
     val remediationRecords: List<RemediationRecord>,
-    val verificationResults: List<VerificationResult>
+    val verificationResults: List<VerificationResult>,
+    val customPolicyEvaluations: List<CustomPolicyEvaluation> = emptyList()
 )
