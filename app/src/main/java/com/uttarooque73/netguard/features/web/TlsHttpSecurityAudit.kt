@@ -36,12 +36,11 @@ object TlsHttpSecurityAudit {
             connection.readTimeout = timeoutMs
             connection.requestMethod = "GET"
             connection.connect()
-            val session = connection.session
             val cert = connection.serverCertificates.firstOrNull() as? java.security.cert.X509Certificate
             val evidence = buildList {
                 add("HTTPS endpoint reachable.")
-                add("Negotiated TLS protocol: " + session.protocol)
-                add("Negotiated cipher suite: " + session.cipherSuite)
+                add("Negotiated cipher suite: " + connection.cipherSuite)
+                add("TLS protocol: not exposed by Android HttpsURLConnection; verify server TLS configuration separately.")
                 cert?.let {
                     add("Certificate subject: " + it.subjectX500Principal.name)
                     add("Certificate issuer: " + it.issuerX500Principal.name)
@@ -51,8 +50,8 @@ object TlsHttpSecurityAudit {
             TlsAuditResult(
                 url = url,
                 reachable = true,
-                protocol = session.protocol,
-                cipherSuite = session.cipherSuite,
+                protocol = null,
+                cipherSuite = connection.cipherSuite,
                 certificateSubject = cert?.subjectX500Principal?.name,
                 certificateIssuer = cert?.issuerX500Principal?.name,
                 expiresAtEpochMs = cert?.notAfter?.time,
