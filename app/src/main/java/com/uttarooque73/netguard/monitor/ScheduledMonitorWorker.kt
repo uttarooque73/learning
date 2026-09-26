@@ -1,6 +1,8 @@
 package com.uttarooque73.netguard.monitor
 
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.uttarooque73.netguard.network.DeviceDiscovery
@@ -16,6 +18,15 @@ class ScheduledMonitorWorker(
         val context = applicationContext
         val config = ScheduledMonitorConfigStore(context).load()
         if (!config.enabled) return Result.success()
+        val locationGranted = ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        if (!locationGranted) return Result.failure()
         return runCatching {
             val inventory = NetworkInventoryStore(context)
             val network = inventory.loadNetwork() ?: return@runCatching 0
