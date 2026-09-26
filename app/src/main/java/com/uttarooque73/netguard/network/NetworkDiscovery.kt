@@ -2,6 +2,7 @@ package com.uttarooque73.netguard.network
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.os.Build
 import android.net.LinkProperties
 import android.net.wifi.WifiManager
 import java.net.Inet4Address
@@ -28,7 +29,9 @@ class NetworkDiscovery(private val context: Context) {
 
         val subnet = linkProperties?.linkAddresses
             ?.firstOrNull { it.address is Inet4Address }
-            ?.let { "${it.address.hostAddress}/${it.prefixLength}" }
+            ?.let { address ->
+                SubnetCalculator.networkCidr(address.address.hostAddress ?: return@let null, address.prefixLength)
+            }
 
         val dnsServers = linkProperties?.dnsServers?.mapNotNull { it.hostAddress } ?: emptyList()
 
@@ -49,7 +52,11 @@ class NetworkDiscovery(private val context: Context) {
             dnsServers = dnsServers,
             ssid = ssid,
             bssid = bssid,
-            wifiSecurity = null
+            wifiSecurity = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                WifiSecurityClassifier.classify(connection?.currentSecurityType ?: -1)
+            } else {
+                "Unknown (Android < 12)"
+            }
         )
     }
 
