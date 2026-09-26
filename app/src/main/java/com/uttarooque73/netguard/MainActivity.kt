@@ -530,6 +530,7 @@ private fun NetworkScreen(networkInfo: NetworkInfo?) {
             Text("Wi-Fi security: " + (networkInfo.wifiSecurity ?: "Not determined"))
             }
         }
+        }
     }
 }
 
