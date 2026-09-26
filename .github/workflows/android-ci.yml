@@ -80,7 +80,11 @@ jobs:
         run: gradle assembleRelease --no-daemon
 
       - name: Prepare release APK
-        run: cp app/build/outputs/apk/release/app-release.apk "NetGuard-${GITHUB_REF_NAME}.apk"
+        run: |
+          APK_PATH="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" "NetGuard-${GITHUB_REF_NAME}.apk"
+          echo "Release APK: $APK_PATH"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
