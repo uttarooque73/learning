@@ -19,3 +19,22 @@ NetGuard is designed for defensive assessment of networks and devices the user o
 ## Roadmap
 
 See [`plan.md`](plan.md) for the complete phased implementation plan.
+
+
+## Advanced security features
+
+The current implementation also includes:
+
+- Android device security posture checks
+- Installed application security inventory
+- DNS and gateway audit
+- TLS certificate/protocol observation
+- HTTP security-header checks
+- Wi-Fi identity/trust change detection
+- Central remediation queue
+- Security timeline event model
+- JSON/CSV/PDF/ZIP report export and Android sharing
+- Configurable security-policy evaluation
+- Security Learning Mode
+
+See [docs/SECURITY_FEATURES.md](docs/SECURITY_FEATURES.md) and [plan.md](plan.md) for scope and limitations.
