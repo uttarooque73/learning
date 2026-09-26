@@ -47,6 +47,9 @@ import com.uttarooque73.netguard.remediation.RemediationCatalog
 import com.uttarooque73.netguard.remediation.RemediationRecord
 import com.uttarooque73.netguard.remediation.RemediationStatus
 import com.uttarooque73.netguard.remediation.RemediationStore
+import com.uttarooque73.netguard.verification.VerificationEngine
+import com.uttarooque73.netguard.verification.VerificationResult
+import com.uttarooque73.netguard.verification.VerificationStore
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -63,6 +66,9 @@ class MainActivity : ComponentActivity() {
     private var selectedFinding by mutableStateOf<Finding?>(null)
     private var remediationRecords by mutableStateOf<List<RemediationRecord>>(emptyList())
     private lateinit var remediationStore: RemediationStore
+    private lateinit var verificationStore: VerificationStore
+    private var verificationResults by mutableStateOf<List<VerificationResult>>(emptyList())
+    private var verifyingFindingId by mutableStateOf<String?>(null)
     private lateinit var findingStore: FindingStore
 
     private val locationPermissionLauncher = registerForActivityResult(
@@ -77,9 +83,11 @@ class MainActivity : ComponentActivity() {
         serviceStore = ServiceAuditStore(this)
         findingStore = FindingStore(this)
         remediationStore = RemediationStore(this)
+        verificationStore = VerificationStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
+        verificationResults = verificationStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -99,7 +107,10 @@ class MainActivity : ComponentActivity() {
                 selectedFinding = selectedFinding,
                 onSelectFinding = { selectedFinding = it },
                 remediationRecords = remediationRecords,
-                onStartRemediation = ::startRemediation
+                onStartRemediation = ::startRemediation,
+                verificationResults = verificationResults,
+                verifyingFindingId = verifyingFindingId,
+                onVerifyFinding = ::verifyFinding
             )
         }
     }
@@ -122,6 +133,20 @@ class MainActivity : ComponentActivity() {
                 inventoryStore.clearDevices()
             }
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
+    }
+
+    private fun verifyFinding(finding: Finding) {
+        if (verifyingFindingId != null) return
+        verifyingFindingId = finding.id
+        lifecycleScope.launch {
+            val beforePresent = findings.any { it.id == finding.id && it.ipAddress == finding.ipAddress }
+            val result = VerificationEngine().verify(finding, beforePresent)
+            verificationResults = verificationResults.filterNot {
+                it.findingId == result.findingId && it.ipAddress == result.ipAddress
+            } + result
+            verificationStore.save(verificationResults)
+            verifyingFindingId = null
+        }
     }
 
     private fun startRemediation(finding: Finding) {
@@ -182,7 +207,10 @@ fun NetGuardApp(
     selectedFinding: Finding?,
     onSelectFinding: (Finding?) -> Unit,
     remediationRecords: List<RemediationRecord>,
-    onStartRemediation: (Finding) -> Unit
+    onStartRemediation: (Finding) -> Unit,
+    verificationResults: List<VerificationResult>,
+    verifyingFindingId: String?,
+    onVerifyFinding: (Finding) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -203,7 +231,10 @@ fun NetGuardApp(
                 selectedFinding = selectedFinding,
                 onSelectFinding = onSelectFinding,
                 remediationRecords = remediationRecords,
-                onStartRemediation = onStartRemediation
+                onStartRemediation = onStartRemediation,
+                verificationResults = verificationResults,
+                verifyingFindingId = verifyingFindingId,
+                onVerifyFinding = onVerifyFinding
             )
         }
     }
@@ -227,7 +258,10 @@ private fun Dashboard(
     selectedFinding: Finding?,
     onSelectFinding: (Finding?) -> Unit,
     remediationRecords: List<RemediationRecord>,
-    onStartRemediation: (Finding) -> Unit
+    onStartRemediation: (Finding) -> Unit,
+    verificationResults: List<VerificationResult>,
+    verifyingFindingId: String?,
+    onVerifyFinding: (Finding) -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -280,7 +314,7 @@ private fun Dashboard(
                 }
 
                 RiskDashboard(findings, onSelectFinding)
-                selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation) }
+                selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
@@ -369,23 +403,6 @@ private fun RiskDashboard(findings: List<Finding>, onSelectFinding: (Finding?) -
 }
 
 @Composable
-private fun FindingDetail(finding: Finding, onClose: (Finding?) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(finding.title, style = MaterialTheme.typography.titleLarge)
-            Text("Severity: " + finding.severity.name)
-            Text("Confidence: " + finding.confidence.name)
-            Text("Asset: " + finding.ipAddress)
-            Text("Evidence: " + finding.evidence)
-            Text("Explanation: " + finding.explanation)
-            Text("Remediation: " + finding.remediation)
-            Text("Verification: " + finding.verification)
-            TextButton(onClick = { onClose(null) }) { Text("Close") }
-        }
-    }
-}
-
-@Composable
 private fun FindingDetail(
     finding: Finding,
     onClose: (Finding?) -> Unit,
@@ -410,6 +427,20 @@ private fun FindingDetail(
                 it.steps.forEachIndexed { index, step -> Text((index + 1).toString() + ". " + step) }
                 Text("Verification: " + it.verification)
                 Text("Status: " + (record?.status?.name ?: RemediationStatus.NOT_STARTED.name))
+                val verification = verificationResults.lastOrNull {
+                    it.findingId == finding.id && it.ipAddress == finding.ipAddress
+                }
+                Text("Verification status: " + (verification?.status?.name ?: "NOT_VERIFIED"))
+                verification?.let {
+                    Text("Before: " + it.beforeEvidence)
+                    Text("After: " + it.afterEvidence)
+                }
+                Button(
+                    onClick = { onVerifyFinding(finding) },
+                    enabled = verifyingFindingId == null
+                ) {
+                    Text(if (verifyingFindingId == finding.id) "Verifying..." else "Verify now")
+                }
                 Button(
                     onClick = { onStartRemediation(finding) },
                     enabled = record?.status != RemediationStatus.IN_PROGRESS
