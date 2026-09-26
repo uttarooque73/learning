@@ -232,3 +232,22 @@ The tool is intended for defensive assessment of networks and devices the user o
 ## Development Rule
 
 Build each phase so that it is independently testable. Do not build the entire scanner first. Establish the data model and interfaces early so new audit checks and remediation playbooks can be added without rewriting the application.
+
+
+### Current implementation status
+
+Phase 3 implementation has started:
+- bounded TCP service audit for a conservative catalog of common ports
+- service model with IP, port, protocol, service name, reachability, and timestamp
+- local persistence for service inventory
+- per-device service audit action in the Devices screen
+- service catalog unit coverage
+
+Remaining Phase 3 work:
+- richer service evidence
+- audit timestamps and scan sessions
+- explicit target authorization state
+- service inventory filtering/sorting
+- finding generation from exposed services
+- dedicated Services/Exposure screen
+- integration tests on real Android network interfaces
