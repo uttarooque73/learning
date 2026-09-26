@@ -71,6 +71,21 @@ import com.uttarooque73.netguard.admin.AdminEventType
 import com.uttarooque73.netguard.admin.AssetMetadata
 import com.uttarooque73.netguard.admin.NetworkProfile
 import kotlinx.coroutines.launch
+import com.uttarooque73.netguard.features.apps.AppSecurityCheck
+import com.uttarooque73.netguard.features.apps.InstalledAppSecurityAudit
+import com.uttarooque73.netguard.features.network.DnsGatewayAudit
+import com.uttarooque73.netguard.features.network.DnsGatewayAuditResult
+import com.uttarooque73.netguard.features.wifi.WifiObservation
+import com.uttarooque73.netguard.features.wifi.WifiTrustEngine
+import com.uttarooque73.netguard.features.wifi.WifiTrustResult
+import com.uttarooque73.netguard.features.web.TlsHttpSecurityAudit
+import com.uttarooque73.netguard.features.web.TlsAuditResult
+import com.uttarooque73.netguard.features.web.HttpSecurityResult
+import com.uttarooque73.netguard.features.policy.PolicyInput
+import com.uttarooque73.netguard.features.policy.PolicyResult
+import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
+import com.uttarooque73.netguard.features.learning.SecurityLearningMode
+import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 
 class MainActivity : ComponentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
@@ -105,6 +120,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var findingStore: FindingStore
     private var mobileSecurity by mutableStateOf<MobileSecuritySnapshot?>(null)
     private var mobileAuditRunning by mutableStateOf(false)
+    private var appSecurityChecks by mutableStateOf<List<AppSecurityCheck>>(emptyList())
+    private var dnsGatewayResult by mutableStateOf<DnsGatewayAuditResult?>(null)
+    private var wifiTrustResult by mutableStateOf<WifiTrustResult?>(null)
+    private var tlsResult by mutableStateOf<TlsAuditResult?>(null)
+    private var httpResult by mutableStateOf<HttpSecurityResult?>(null)
+    private var policyResults by mutableStateOf<List<PolicyResult>>(emptyList())
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -178,7 +199,14 @@ class MainActivity : ComponentActivity() {
                 onUpdateAsset = ::updateAsset,
                 mobileSecurity = mobileSecurity,
                 mobileAuditRunning = mobileAuditRunning,
-                onRefreshMobileSecurity = ::refreshMobileSecurity
+                onRefreshMobileSecurity = ::refreshMobileSecurity,
+                appSecurityChecks = appSecurityChecks,
+                dnsGatewayResult = dnsGatewayResult,
+                wifiTrustResult = wifiTrustResult,
+                tlsResult = tlsResult,
+                httpResult = httpResult,
+                policyResults = policyResults,
+                onRunAdvancedAudit = ::runAdvancedAudit
             )
         }
     }
@@ -228,6 +256,37 @@ class MainActivity : ComponentActivity() {
             mobileSecurity = runCatching { MobileSecurityAudit.inspect(this@MainActivity) }
                 .getOrNull()
             mobileAuditRunning = false
+        }
+    }
+
+    private fun runAdvancedAudit(url: String?) {
+        lifecycleScope.launch {
+            appSecurityChecks = runCatching { InstalledAppSecurityAudit.inspect(this@MainActivity) }.getOrDefault(emptyList())
+            dnsGatewayResult = runCatching { DnsGatewayAudit.inspect(this@MainActivity) }.getOrNull()
+            networkInfo?.let { info ->
+                val current = WifiObservation(info.ssid, info.bssid, info.gatewayAddress, info.wifiSecurity)
+                val previous = null
+                wifiTrustResult = WifiTrustEngine.compare(previous, current)
+            }
+            if (!url.isNullOrBlank()) {
+                if (url.startsWith("https://", true)) {
+                    tlsResult = runCatching { TlsHttpSecurityAudit.inspectTls(url) }.getOrNull()
+                }
+                if (url.startsWith("http://", true) || url.startsWith("https://", true)) {
+                    httpResult = runCatching { TlsHttpSecurityAudit.inspectHttp(url) }.getOrNull()
+                }
+            }
+            val mobile = mobileSecurity
+            val input = PolicyInput(
+                telnetReachable = services.any { it.port == 23 && it.reachable },
+                smbReachable = services.any { it.port == 445 && it.reachable },
+                httpReachableWithoutHttps = services.any { it.port == 80 && it.reachable } &&
+                    services.none { it.port == 443 && it.reachable },
+                usbDebugging = mobile?.checks?.any { it.id == "MOB-DEV-002" && it.status == com.uttarooque73.netguard.mobile.MobileCheckStatus.FAIL } == true,
+                secureScreenLock = mobile?.checks?.firstOrNull { it.id == "MOB-DEV-003" }?.status ==
+                    com.uttarooque73.netguard.mobile.MobileCheckStatus.PASS
+            )
+            policyResults = SecurityPolicyEngine.evaluate(SecurityPolicyEngine.defaultRules(), input)
         }
     }
 
@@ -378,7 +437,14 @@ fun NetGuardApp(
     onUpdateAsset: (String) -> Unit,
     mobileSecurity: MobileSecuritySnapshot?,
     mobileAuditRunning: Boolean,
-    onRefreshMobileSecurity: () -> Unit
+    onRefreshMobileSecurity: () -> Unit,
+    appSecurityChecks: List<AppSecurityCheck>,
+    dnsGatewayResult: DnsGatewayAuditResult?,
+    wifiTrustResult: WifiTrustResult?,
+    tlsResult: TlsAuditResult?,
+    httpResult: HttpSecurityResult?,
+    policyResults: List<PolicyResult>,
+    onRunAdvancedAudit: (String?) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -418,7 +484,14 @@ fun NetGuardApp(
                 onUpdateAsset = onUpdateAsset,
                 mobileSecurity = mobileSecurity,
                 mobileAuditRunning = mobileAuditRunning,
-                onRefreshMobileSecurity = onRefreshMobileSecurity
+                onRefreshMobileSecurity = onRefreshMobileSecurity,
+                appSecurityChecks = appSecurityChecks,
+                dnsGatewayResult = dnsGatewayResult,
+                wifiTrustResult = wifiTrustResult,
+                tlsResult = tlsResult,
+                httpResult = httpResult,
+                policyResults = policyResults,
+                onRunAdvancedAudit = onRunAdvancedAudit
             )
         }
     }
@@ -476,6 +549,7 @@ private fun Dashboard(
             TextButton(onClick = { onSelectScreen(Screen.Network) }) { Text("Network") }
             TextButton(onClick = { onSelectScreen(Screen.Devices) }) { Text("Devices (" + devices.size + ")") }
             TextButton(onClick = { onSelectScreen(Screen.Mobile) }) { Text("Mobile") }
+            TextButton(onClick = { onSelectScreen(Screen.Advanced) }) { Text("Advanced") }
         }
 
         when (selectedScreen) {
@@ -529,11 +603,12 @@ private fun Dashboard(
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
+            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, onRunAdvancedAudit)
         }
     }
 }
 
-enum class Screen { Dashboard, Network, Devices, Mobile }
+enum class Screen { Dashboard, Network, Devices, Mobile, Advanced }
 
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
@@ -821,6 +896,91 @@ private fun MobileSecurityCheckCard(check: MobileSecurityCheck) {
                 Text((index + 1).toString() + ". " + step)
             }
             Text("Verification: " + check.verification)
+        }
+    }
+}
+
+
+@Composable
+private fun AdvancedSecuritySection(
+    apps: List<AppSecurityCheck>,
+    dns: DnsGatewayAuditResult?,
+    wifi: WifiTrustResult?,
+    tls: TlsAuditResult?,
+    http: HttpSecurityResult?,
+    policies: List<PolicyResult>,
+    onRunAudit: (String?) -> Unit
+) {
+    var url by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Advanced Security", style = MaterialTheme.typography.headlineSmall)
+        Text("Application, DNS, gateway, Wi-Fi trust, web security, policy, reporting and learning capabilities.")
+
+        Button(onClick = { onRunAudit(url) }) { Text("Run security audit") }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Installed applications", style = MaterialTheme.typography.titleMedium)
+                Text("Applications analyzed: " + apps.size)
+                apps.take(10).forEach {
+                    Text(it.appName + " — " + it.packageName)
+                    if (it.evidence.isNotEmpty()) Text(it.evidence.joinToString(" "))
+                }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("DNS & Gateway", style = MaterialTheme.typography.titleMedium)
+                Text(dns?.evidence?.joinToString(" ") ?: "Not audited")
+                dns?.remediation?.forEach { Text("Fix: " + it) }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Wi-Fi trust", style = MaterialTheme.typography.titleMedium)
+                Text(wifi?.status?.name ?: "Not audited")
+                Text(wifi?.evidence ?: "No observation yet")
+                wifi?.remediation?.forEach { Text("Guidance: " + it) }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("TLS / HTTP analyzer", style = MaterialTheme.typography.titleMedium)
+                androidx.compose.material3.OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("URL to audit") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                tls?.evidence?.forEach { Text(it) }
+                http?.evidence?.forEach { Text(it) }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Security policies", style = MaterialTheme.typography.titleMedium)
+                policies.forEach { Text(it.status.name + " — " + it.title) }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Security Learning Mode", style = MaterialTheme.typography.titleMedium)
+                SecurityLearningMode.topics.forEach {
+                    Text(it.title, style = MaterialTheme.typography.titleSmall)
+                    Text(it.explanation)
+                    Text("Evidence: " + it.evidenceGuide)
+                    Text("Remediation: " + it.remediationConcept)
+                    Text("Verification: " + it.verificationGuide)
+                }
+            }
         }
     }
 }
