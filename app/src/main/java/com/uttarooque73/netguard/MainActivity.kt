@@ -80,6 +80,7 @@ import com.uttarooque73.netguard.features.network.DnsGatewayAuditResult
 import com.uttarooque73.netguard.features.wifi.WifiObservation
 import com.uttarooque73.netguard.features.wifi.WifiTrustEngine
 import com.uttarooque73.netguard.features.wifi.WifiTrustResult
+import com.uttarooque73.netguard.features.wifi.WifiObservationStore
 import com.uttarooque73.netguard.features.web.TlsHttpSecurityAudit
 import com.uttarooque73.netguard.features.web.TlsAuditResult
 import com.uttarooque73.netguard.features.web.HttpSecurityResult
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
     private var appSecurityChecks by mutableStateOf<List<AppSecurityCheck>>(emptyList())
     private var dnsGatewayResult by mutableStateOf<DnsGatewayAuditResult?>(null)
     private var wifiTrustResult by mutableStateOf<WifiTrustResult?>(null)
+    private lateinit var wifiObservationStore: WifiObservationStore
     private var tlsResult by mutableStateOf<TlsAuditResult?>(null)
     private var httpResult by mutableStateOf<HttpSecurityResult?>(null)
     private var policyResults by mutableStateOf<List<PolicyResult>>(emptyList())
@@ -151,6 +153,7 @@ class MainActivity : ComponentActivity() {
         monitorBaselineStore = MonitorBaselineStore(this)
         baselineStore = BaselineStore(this)
         adminStore = AdminStore(this)
+        wifiObservationStore = WifiObservationStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
@@ -301,8 +304,9 @@ class MainActivity : ComponentActivity() {
             dnsGatewayResult = runCatching { DnsGatewayAudit.inspect(this@MainActivity) }.getOrNull()
             networkInfo?.let { info ->
                 val current = WifiObservation(info.ssid, info.bssid, info.gatewayAddress, info.wifiSecurity)
-                val previous = null
+                val previous = wifiObservationStore.load()
                 wifiTrustResult = WifiTrustEngine.compare(previous, current)
+                wifiObservationStore.save(current)
             }
             if (!url.isNullOrBlank()) {
                 if (url.startsWith("https://", true)) {
