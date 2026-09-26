@@ -99,7 +99,7 @@ jobs:
 
       - name: Build signed release APK
         env:
-          NETGUARD_KEYSTORE_PATH: app/release.keystore
+          NETGUARD_KEYSTORE_PATH: release.keystore
           NETGUARD_KEYSTORE_PASSWORD: ${{ secrets.NETGUARD_KEYSTORE_PASSWORD }}
           NETGUARD_KEY_ALIAS: ${{ secrets.NETGUARD_KEY_ALIAS }}
           NETGUARD_KEY_PASSWORD: ${{ secrets.NETGUARD_KEY_PASSWORD }}
