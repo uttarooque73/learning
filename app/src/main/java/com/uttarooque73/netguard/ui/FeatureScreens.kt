@@ -23,6 +23,7 @@ import com.uttarooque73.netguard.verification.VerificationResult
 import com.uttarooque73.netguard.features.wifi.WifiTrustResult
 import com.uttarooque73.netguard.features.web.TlsAuditResult
 import com.uttarooque73.netguard.features.web.HttpSecurityResult
+import com.uttarooque73.netguard.features.web.WebServiceFingerprintEngine
 import com.uttarooque73.netguard.features.policy.PolicyResult
 import com.uttarooque73.netguard.features.timeline.SecurityTimelineEvent
 
@@ -98,7 +99,7 @@ fun WifiFeatureScreen(result: WifiTrustResult?) = FeatureListScreen("Wi-Fi Trust
 @Composable
 fun WebFeatureScreen(tls: TlsAuditResult?, http: HttpSecurityResult?) = FeatureListScreen("Web Security", "TLS and HTTP security evidence.") {
     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("TLS", style = MaterialTheme.typography.titleMedium); tls?.evidence?.forEach { Text(it) } } }
-    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("HTTP", style = MaterialTheme.typography.titleMedium); http?.evidence?.forEach { Text(it) } } }
+    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("HTTP", style = MaterialTheme.typography.titleMedium); http?.evidence?.forEach { Text(it) }; http?.let { val fingerprint = WebServiceFingerprintEngine.from(it.url, it.headers); Text("Server: " + (fingerprint.server ?: "Not disclosed")); Text("Version evidence: " + (fingerprint.versionEvidence ?: "Not available")) } } }
 }
 
 @Composable
