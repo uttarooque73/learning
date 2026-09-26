@@ -37,7 +37,6 @@ import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
 import com.uttarooque73.netguard.network.NetworkInventoryStore
-import com.uttarooque73.netguard.network.WifiSecurityClassifier
 import com.uttarooque73.netguard.audit.DiscoveredService
 import com.uttarooque73.netguard.audit.ServiceAudit
 import com.uttarooque73.netguard.audit.ServiceAuditStore
@@ -205,6 +204,7 @@ class MainActivity : ComponentActivity() {
                 baselineResults = BaselineEvaluator.evaluate(baseline, emptyList())
                 inventoryStore.saveNetwork(info)
                 inventoryStore.clearDevices()
+                monitorBaselineStore.clear()
                 serviceStore.clear()
                 findingStore.save(emptyList())
                 verificationStore.save(emptyList())
