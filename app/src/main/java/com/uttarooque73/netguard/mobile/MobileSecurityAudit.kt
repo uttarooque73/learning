@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
-import android.os.storage.StorageManager
 import android.provider.Settings
 import android.app.KeyguardManager
 
@@ -185,9 +184,7 @@ object MobileSecurityAudit {
 
         val androidVersion = Build.VERSION.RELEASE ?: "unknown"
         val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { null }
-        val appDataEncrypted = runCatching {
-            context.getSystemService(StorageManager::class.java).isEncrypted(context.filesDir)
-        }.getOrNull()
+        val appDataEncrypted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) true else null
         val debuggableBuild = Build.IS_DEBUGGABLE
 
         checks += MobileSecurityCheck(
