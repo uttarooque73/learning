@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -303,6 +304,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NetGuardApp(
     networkInfo: NetworkInfo?,
@@ -403,7 +405,17 @@ private fun Dashboard(
     onVerifyFinding: (Finding) -> Unit,
     auditHistory: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
     latestReport: String?,
-    onCreateReport: () -> Unit
+    onCreateReport: () -> Unit,
+    monitoring: Boolean,
+    monitorEvents: List<MonitorEvent>,
+    onCheckChanges: () -> Unit,
+    baselineResults: List<BaselineResult>,
+    onEvaluateBaseline: () -> Unit,
+    profiles: List<NetworkProfile>,
+    assets: List<AssetMetadata>,
+    adminEvents: List<AdminEvent>,
+    onCreateProfile: () -> Unit,
+    onUpdateAsset: (String) -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
