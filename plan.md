@@ -289,6 +289,15 @@ Phase 8 — complete for current MVP:
 - report/history UI
 - history capped to the latest 20 audits
 
+Phase 9 — complete for current MVP:
+- bounded change detection against the authorized device/service inventory
+- detection of newly discovered devices
+- detection of newly exposed services
+- detection of services no longer reachable
+- persistent monitoring event history capped at 100 events
+- explicit baseline storage
+- manual opt-in monitoring check from the dashboard
+
 Next:
-- Phase 9 Monitoring & Alerts
+- Phase 10 Baselines & Compliance
 
