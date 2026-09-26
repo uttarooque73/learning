@@ -32,12 +32,15 @@ import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
+import com.uttarooque73.netguard.network.NetworkInventoryStore
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
     private var devices by mutableStateOf<List<DiscoveredDevice>>(emptyList())
     private var isDiscovering by mutableStateOf(false)
+    private var discoveryError by mutableStateOf<String?>(null)
+    private lateinit var inventoryStore: NetworkInventoryStore
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -47,12 +50,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        inventoryStore = NetworkInventoryStore(this)
+        networkInfo = inventoryStore.loadNetwork()
+        devices = inventoryStore.loadDevices()
         setContent {
             NetGuardApp(
                 networkInfo = networkInfo,
                 devices = devices,
                 isDiscovering = isDiscovering,
                 onStartAudit = ::requestNetworkPermissionAndInspect,
+                discoveryError = discoveryError,
                 onDiscoverDevices = ::discoverDevices
             )
         }
@@ -67,8 +74,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun inspectNetwork() {
-        networkInfo = NetworkDiscovery(this).inspect()
-        devices = emptyList()
+        discoveryError = null
+        runCatching { NetworkDiscovery(this).inspect() }
+            .onSuccess { info ->
+                networkInfo = info
+                devices = emptyList()
+                inventoryStore.saveNetwork(info)
+                inventoryStore.clearDevices()
+            }
+            .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
     private fun discoverDevices() {
@@ -76,9 +90,15 @@ class MainActivity : ComponentActivity() {
         val localIp = info.localAddress ?: return
         val prefix = info.subnet?.substringAfter('/')?.toIntOrNull() ?: return
 
-        lifecycleScope.launch {
+lifecycleScope.launch {
             isDiscovering = true
-            devices = DeviceDiscovery().discover(localIp, prefix)
+            discoveryError = null
+            runCatching { DeviceDiscovery().discover(localIp, prefix) }
+                .onSuccess { found ->
+                    devices = found
+                    inventoryStore.saveDevices(found)
+                }
+                .onFailure { discoveryError = it.message ?: "Device discovery failed." }
             isDiscovering = false
         }
     }
@@ -89,6 +109,7 @@ fun NetGuardApp(
     networkInfo: NetworkInfo?,
     devices: List<DiscoveredDevice>,
     isDiscovering: Boolean,
+    discoveryError: String?,
     onStartAudit: () -> Unit,
     onDiscoverDevices: () -> Unit
 ) {
@@ -99,6 +120,7 @@ fun NetGuardApp(
                 networkInfo = networkInfo,
                 devices = devices,
                 isDiscovering = isDiscovering,
+                discoveryError = discoveryError,
                 onStartAudit = onStartAudit,
                 onDiscoverDevices = onDiscoverDevices
             )
@@ -112,6 +134,7 @@ private fun Dashboard(
     networkInfo: NetworkInfo?,
     devices: List<DiscoveredDevice>,
     isDiscovering: Boolean,
+    discoveryError: String?,
     onStartAudit: () -> Unit,
     onDiscoverDevices: () -> Unit
 ) {
@@ -121,6 +144,12 @@ private fun Dashboard(
     ) {
         Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
         Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
+
+        discoveryError?.let { error ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Text("Discovery error: $error", modifier = Modifier.padding(16.dp))
+            }
+        }
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -160,7 +189,7 @@ private fun Dashboard(
                 if (isDiscovering) {
                     CircularProgressIndicator()
                 } else if (devices.isEmpty()) {
-                    Text("No devices discovered yet")
+                    Text("No reachable devices found in the authorized local subnet.")
                 } else {
                     devices.forEach { device ->
                         Text("${device.ipAddress} — reachable")
