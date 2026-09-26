@@ -50,6 +50,9 @@ import com.uttarooque73.netguard.remediation.RemediationStore
 import com.uttarooque73.netguard.verification.VerificationEngine
 import com.uttarooque73.netguard.verification.VerificationResult
 import com.uttarooque73.netguard.verification.VerificationStore
+import com.uttarooque73.netguard.report.AuditHistoryStore
+import com.uttarooque73.netguard.report.AuditReportGenerator
+import com.uttarooque73.netguard.report.AuditSnapshot
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -67,6 +70,9 @@ class MainActivity : ComponentActivity() {
     private var remediationRecords by mutableStateOf<List<RemediationRecord>>(emptyList())
     private lateinit var remediationStore: RemediationStore
     private lateinit var verificationStore: VerificationStore
+    private lateinit var auditHistoryStore: AuditHistoryStore
+    private var auditHistory by mutableStateOf<List<com.uttarooque73.netguard.report.AuditHistoryEntry>>(emptyList())
+    private var latestReport by mutableStateOf<String?>(null)
     private var verificationResults by mutableStateOf<List<VerificationResult>>(emptyList())
     private var verifyingFindingId by mutableStateOf<String?>(null)
     private lateinit var findingStore: FindingStore
@@ -84,10 +90,12 @@ class MainActivity : ComponentActivity() {
         findingStore = FindingStore(this)
         remediationStore = RemediationStore(this)
         verificationStore = VerificationStore(this)
+        auditHistoryStore = AuditHistoryStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
         verificationResults = verificationStore.load()
+        auditHistory = auditHistoryStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -110,7 +118,10 @@ class MainActivity : ComponentActivity() {
                 onStartRemediation = ::startRemediation,
                 verificationResults = verificationResults,
                 verifyingFindingId = verifyingFindingId,
-                onVerifyFinding = ::verifyFinding
+                onVerifyFinding = ::verifyFinding,
+                auditHistory = auditHistory,
+                latestReport = latestReport,
+                onCreateReport = ::createReport
             )
         }
     }
@@ -135,6 +146,22 @@ class MainActivity : ComponentActivity() {
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
+    private fun createReport() {
+        val snapshot = AuditSnapshot(
+            id = java.util.UUID.randomUUID().toString(),
+            createdAtEpochMs = System.currentTimeMillis(),
+            network = networkInfo,
+            devices = devices,
+            services = services,
+            findings = findings,
+            remediationRecords = remediationRecords,
+            verificationResults = verificationResults
+        )
+        val entry = com.uttarooque73.netguard.report.AuditHistoryEntry(snapshot.id, snapshot.createdAtEpochMs, snapshot.devices.size, snapshot.services.size, snapshot.findings.size)
+        auditHistory = (auditHistory + entry).takeLast(20)
+        auditHistoryStore.save(listOf(snapshot))
+        latestReport = AuditReportGenerator.generate(snapshot)
+    }
     private fun verifyFinding(finding: Finding) {
         if (verifyingFindingId != null) return
         verifyingFindingId = finding.id
@@ -210,7 +237,10 @@ fun NetGuardApp(
     onStartRemediation: (Finding) -> Unit,
     verificationResults: List<VerificationResult>,
     verifyingFindingId: String?,
-    onVerifyFinding: (Finding) -> Unit
+    onVerifyFinding: (Finding) -> Unit,
+    auditHistory: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
+    latestReport: String?,
+    onCreateReport: () -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -234,7 +264,10 @@ fun NetGuardApp(
                 onStartRemediation = onStartRemediation,
                 verificationResults = verificationResults,
                 verifyingFindingId = verifyingFindingId,
-                onVerifyFinding = onVerifyFinding
+                onVerifyFinding = onVerifyFinding,
+                auditHistory = auditHistory,
+                latestReport = latestReport,
+                onCreateReport = onCreateReport
             )
         }
     }
@@ -261,7 +294,10 @@ private fun Dashboard(
     onStartRemediation: (Finding) -> Unit,
     verificationResults: List<VerificationResult>,
     verifyingFindingId: String?,
-    onVerifyFinding: (Finding) -> Unit
+    onVerifyFinding: (Finding) -> Unit,
+    auditHistory: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
+    latestReport: String?,
+    onCreateReport: () -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -314,6 +350,7 @@ private fun Dashboard(
                 }
 
                 RiskDashboard(findings, onSelectFinding)
+                ReportSection(auditHistory, latestReport, onCreateReport)
                 selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
@@ -452,6 +489,28 @@ private fun FindingDetail(
                 }
             }
             TextButton(onClick = { onClose(null) }) { Text("Close") }
+        }
+    }
+}
+
+@Composable
+private fun ReportSection(
+    history: List<com.uttarooque73.netguard.report.AuditHistoryEntry>,
+    latestReport: String?,
+    onCreateReport: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Reports & audit history", style = MaterialTheme.typography.titleMedium)
+            Button(onClick = onCreateReport) { Text("Create audit report") }
+            Text("Saved audits: " + history.size)
+            history.takeLast(5).reversed().forEach { entry ->
+                Text(entry.id + " — devices " + entry.deviceCount + ", services " + entry.serviceCount + ", findings " + entry.findingCount)
+            }
+            latestReport?.let { report ->
+                Text("Latest report", style = MaterialTheme.typography.titleSmall)
+                Text(report)
+            }
         }
     }
 }
