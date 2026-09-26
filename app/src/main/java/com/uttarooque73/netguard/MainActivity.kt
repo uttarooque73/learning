@@ -534,7 +534,14 @@ private fun Dashboard(
     onUpdateAsset: (String) -> Unit,
     mobileSecurity: MobileSecuritySnapshot?,
     mobileAuditRunning: Boolean,
-    onRefreshMobileSecurity: () -> Unit
+    onRefreshMobileSecurity: () -> Unit,
+    appSecurityChecks: List<AppSecurityCheck>,
+    dnsGatewayResult: DnsGatewayAuditResult?,
+    wifiTrustResult: WifiTrustResult?,
+    tlsResult: TlsAuditResult?,
+    httpResult: HttpSecurityResult?,
+    policyResults: List<PolicyResult>,
+    onRunAdvancedAudit: (String?) -> Unit
 ) {
     Column(
         modifier = modifier
