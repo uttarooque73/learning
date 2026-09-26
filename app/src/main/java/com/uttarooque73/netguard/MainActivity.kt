@@ -37,6 +37,9 @@ import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
 import com.uttarooque73.netguard.network.NetworkInventoryStore
+import com.uttarooque73.netguard.mobile.MobileSecurityAudit
+import com.uttarooque73.netguard.mobile.MobileSecurityCheck
+import com.uttarooque73.netguard.mobile.MobileSecuritySnapshot
 import com.uttarooque73.netguard.audit.DiscoveredService
 import com.uttarooque73.netguard.audit.ServiceAudit
 import com.uttarooque73.netguard.audit.ServiceAuditStore
@@ -100,6 +103,8 @@ class MainActivity : ComponentActivity() {
     private var verificationResults by mutableStateOf<List<VerificationResult>>(emptyList())
     private var verifyingFindingId by mutableStateOf<String?>(null)
     private lateinit var findingStore: FindingStore
+    private var mobileSecurity by mutableStateOf<MobileSecuritySnapshot?>(null)
+    private var mobileAuditRunning by mutableStateOf(false)
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -136,6 +141,7 @@ class MainActivity : ComponentActivity() {
         adminEvents = adminStore.loadEvents()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
+        mobileSecurity = MobileSecurityAudit.inspect(this)
         setContent {
             NetGuardApp(
                 networkInfo = networkInfo,
@@ -169,7 +175,10 @@ class MainActivity : ComponentActivity() {
                 assets = assets,
                 adminEvents = adminEvents,
                 onCreateProfile = ::createProfile,
-                onUpdateAsset = ::updateAsset
+                onUpdateAsset = ::updateAsset,
+                mobileSecurity = mobileSecurity,
+                mobileAuditRunning = mobileAuditRunning,
+                onRefreshMobileSecurity = ::refreshMobileSecurity
             )
         }
     }
@@ -210,6 +219,16 @@ class MainActivity : ComponentActivity() {
                 verificationStore.save(emptyList())
             }
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
+    }
+
+    private fun refreshMobileSecurity() {
+        if (mobileAuditRunning) return
+        mobileAuditRunning = true
+        lifecycleScope.launch {
+            mobileSecurity = runCatching { MobileSecurityAudit.inspect(this@MainActivity) }
+                .getOrNull()
+            mobileAuditRunning = false
+        }
     }
 
     private fun createProfile() {
@@ -356,7 +375,10 @@ fun NetGuardApp(
     assets: List<AssetMetadata>,
     adminEvents: List<AdminEvent>,
     onCreateProfile: () -> Unit,
-    onUpdateAsset: (String) -> Unit
+    onUpdateAsset: (String) -> Unit,
+    mobileSecurity: MobileSecuritySnapshot?,
+    mobileAuditRunning: Boolean,
+    onRefreshMobileSecurity: () -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -393,7 +415,10 @@ fun NetGuardApp(
                 assets = assets,
                 adminEvents = adminEvents,
                 onCreateProfile = onCreateProfile,
-                onUpdateAsset = onUpdateAsset
+                onUpdateAsset = onUpdateAsset,
+                mobileSecurity = mobileSecurity,
+                mobileAuditRunning = mobileAuditRunning,
+                onRefreshMobileSecurity = onRefreshMobileSecurity
             )
         }
     }
@@ -433,7 +458,10 @@ private fun Dashboard(
     assets: List<AssetMetadata>,
     adminEvents: List<AdminEvent>,
     onCreateProfile: () -> Unit,
-    onUpdateAsset: (String) -> Unit
+    onUpdateAsset: (String) -> Unit,
+    mobileSecurity: MobileSecuritySnapshot?,
+    mobileAuditRunning: Boolean,
+    onRefreshMobileSecurity: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -447,6 +475,7 @@ private fun Dashboard(
             TextButton(onClick = { onSelectScreen(Screen.Dashboard) }) { Text("Dashboard") }
             TextButton(onClick = { onSelectScreen(Screen.Network) }) { Text("Network") }
             TextButton(onClick = { onSelectScreen(Screen.Devices) }) { Text("Devices (" + devices.size + ")") }
+            TextButton(onClick = { onSelectScreen(Screen.Mobile) }) { Text("Mobile") }
         }
 
         when (selectedScreen) {
@@ -494,15 +523,17 @@ private fun Dashboard(
                 MonitoringSection(monitoring, monitorEvents, onCheckChanges)
                 BaselineSection(baselineResults, onEvaluateBaseline)
                 AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
+                MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
                 selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
+            Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
         }
     }
 }
 
-enum class Screen { Dashboard, Network, Devices }
+enum class Screen { Dashboard, Network, Devices, Mobile }
 
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
@@ -743,6 +774,53 @@ private fun AdministrationSection(
             }
             Text("Administrative events: " + events.size)
             events.takeLast(5).reversed().forEach { Text(it.type.name + " — " + it.subject) }
+        }
+    }
+}
+
+@Composable
+private fun MobileSecuritySection(
+    snapshot: MobileSecuritySnapshot?,
+    running: Boolean,
+    onRefresh: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Mobile Security", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Android device and cellular security posture. Checks are evidence-based; REVIEW does not mean a compromise."
+        )
+        Button(onClick = onRefresh, enabled = !running) {
+            Text(if (running) "Auditing..." else "Refresh mobile audit")
+        )
+
+        snapshot?.checks?.forEach { check ->
+            MobileSecurityCheckCard(check)
+        } ?: Text("Mobile security audit has not run yet.")
+    }
+}
+
+@Composable
+private fun MobileSecurityCheckCard(check: MobileSecurityCheck) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(check.title, style = MaterialTheme.typography.titleMedium)
+            Text("Status: " + check.status.name)
+            Text("Evidence: " + check.evidence)
+            Text("Why it matters: " + check.whyItMatters)
+            Text("How to fix / improve", style = MaterialTheme.typography.titleSmall)
+            check.remediation.forEachIndexed { index, step ->
+                Text((index + 1).toString() + ". " + step)
+            }
+            Text("Verification: " + check.verification)
         }
     }
 }
