@@ -333,3 +333,140 @@ Remaining release work:
 - release build validation
 
 
+
+---
+
+## Feature Roadmap — One Feature at a Time
+
+The following backlog is the next product-level roadmap. Each feature is implemented, tested, documented, and verified before moving to the next item.
+
+### Feature 1 — Android Device Security Audit
+**Status: In progress**
+
+- Android version and SDK information.
+- Android security patch level.
+- Secure screen-lock posture.
+- App-data encryption-at-rest signal.
+- Debuggable Android build signal.
+- Evidence, explanation, remediation, and verification for each check.
+- Keep device-security checks separate from network-exposure findings.
+
+Documentation: `docs/features/01-android-device-security-audit.md`
+
+### Feature 2 — Installed Application Security Audit
+**Status: Planned**
+
+- Installed application inventory.
+- Dangerous/runtime permission review where Android permits it.
+- Debuggable application detection.
+- Cleartext traffic configuration.
+- Backup configuration.
+- Exported component indicators.
+- Sideloading/unknown-source indicators where accurately observable.
+- Per-application evidence and remediation guidance.
+
+### Feature 3 — DNS Security Audit
+**Status: Planned**
+
+- Active DNS servers.
+- Private DNS state.
+- DNS configuration changes.
+- Baseline comparison.
+- Evidence-backed DNS findings.
+
+### Feature 4 — Gateway Security Audit
+**Status: Planned**
+
+- Gateway identity tracking.
+- Gateway service exposure.
+- Management interface exposure.
+- Gateway change detection.
+- Evidence and remediation guidance.
+
+### Feature 5 — TLS/HTTPS Security Analyzer
+**Status: Planned**
+
+- TLS reachability.
+- Certificate validity.
+- Certificate hostname matching.
+- Certificate expiry.
+- TLS protocol observations.
+- Safe HTTP-to-HTTPS checks.
+
+### Feature 6 — HTTP Security Analyzer
+**Status: Planned**
+
+- HTTPS redirect behavior.
+- HSTS.
+- Content-Security-Policy.
+- X-Content-Type-Options.
+- Referrer-Policy.
+- Safe cookie security indicators.
+
+### Feature 7 — Wi-Fi Trust & Change Detection
+**Status: Planned**
+
+- SSID/BSSID history.
+- Gateway identity history.
+- Wi-Fi security-mode changes.
+- New BSSID warning for a known SSID.
+- Explicit uncertainty; never claim a rogue AP from one signal.
+
+### Feature 8 — Remediation Center
+**Status: Planned**
+
+- Central remediation queue.
+- Android Settings shortcuts where supported.
+- Guided network/device remediation.
+- Before/after verification.
+- Remediation history.
+
+### Feature 9 — Security Timeline
+**Status: Planned**
+
+- Device changes.
+- Service changes.
+- Network identity changes.
+- Finding state changes.
+- Remediation and verification events.
+
+### Feature 10 — Advanced Reporting
+**Status: Planned**
+
+- JSON export.
+- CSV export.
+- PDF report.
+- Shareable audit package.
+- Executive and technical report views.
+
+### Feature 11 — Configurable Security Policies
+**Status: Planned**
+
+- User-defined checks.
+- Custom thresholds.
+- Home/work profiles.
+- Policy evaluation history.
+
+### Feature 12 — Security Learning Mode
+**Status: Planned**
+
+- Technical explanations.
+- Why the issue matters.
+- Evidence interpretation.
+- Defensive remediation concepts.
+- Verification walkthroughs.
+
+### Feature delivery rule
+
+For every feature:
+
+1. Document scope and security boundary.
+2. Define data model and check IDs.
+3. Implement the smallest useful version.
+4. Add unit tests.
+5. Integrate the UI.
+6. Add remediation guidance.
+7. Add verification where technically possible.
+8. Run CI/build/lint tests.
+9. Update this roadmap.
+10. Only then start the next feature.
