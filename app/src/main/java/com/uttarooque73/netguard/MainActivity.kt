@@ -407,7 +407,10 @@ private fun FindingDetail(
     finding: Finding,
     onClose: (Finding?) -> Unit,
     remediationRecords: List<RemediationRecord>,
-    onStartRemediation: (Finding) -> Unit
+    onStartRemediation: (Finding) -> Unit,
+    verificationResults: List<VerificationResult>,
+    verifyingFindingId: String?,
+    onVerifyFinding: (Finding) -> Unit
 ) {
     val playbook = RemediationCatalog.forFinding(finding.id)
     val record = remediationRecords.lastOrNull { it.findingId == finding.id && it.ipAddress == finding.ipAddress }
