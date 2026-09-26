@@ -59,7 +59,8 @@ android {
         disable += setOf(
             "NullSafeMutableLiveData",
             "FrequentlyChangingValue",
-            "RememberInComposition"
+            "RememberInComposition",
+            "AutoboxingStateCreation"
         )
     }
 
