@@ -123,6 +123,9 @@ import com.uttarooque73.netguard.features.timeline.SecurityTimelineEvent
 import com.uttarooque73.netguard.features.timeline.SecurityTimelineStore
 import com.uttarooque73.netguard.features.policy.CustomPolicy
 import com.uttarooque73.netguard.features.policy.CustomPolicyStore
+import com.uttarooque73.netguard.features.policy.CustomPolicyEvaluator
+import com.uttarooque73.netguard.features.policy.CustomPolicyEvaluation
+import com.uttarooque73.netguard.features.policy.CustomPolicyRuleType
 import com.uttarooque73.netguard.monitor.ScheduledMonitorConfigStore
 import com.uttarooque73.netguard.monitor.ScheduledMonitorScheduler
 import com.uttarooque73.netguard.security.AppLockPolicyStore
@@ -171,6 +174,7 @@ class MainActivity : FragmentActivity() {
     private var dnsSecurity by mutableStateOf<DnsSecurityResult?>(null)
     private var vulnerabilityCandidates by mutableStateOf<List<VulnerabilityCandidate>>(emptyList())
     private var riskTrend by mutableStateOf<List<RiskTrendPoint>>(emptyList())
+    private var customPolicyEvaluations by mutableStateOf<List<CustomPolicyEvaluation>>(emptyList())
     private var selectedPolicyProfile by mutableStateOf("Home")
     private lateinit var timelineStore: SecurityTimelineStore
     private lateinit var appLockPolicyStore: AppLockPolicyStore
@@ -274,7 +278,8 @@ class MainActivity : FragmentActivity() {
                 topology = topology,
                 dnsSecurity = dnsSecurity,
                 vulnerabilityCandidates = vulnerabilityCandidates,
-                riskTrend = riskTrend
+                riskTrend = riskTrend,
+                customPolicyEvaluations = customPolicyEvaluations
                 )
             }
         }
@@ -449,6 +454,12 @@ class MainActivity : FragmentActivity() {
             val profile = SecurityPolicyProfiles.defaults().firstOrNull { it.name == selectedPolicyProfile }
                 ?: SecurityPolicyProfiles.defaults().first()
             policyResults = SecurityPolicyEngine.evaluate(profile.rules, input)
+            val customPolicies = CustomPolicyStore(this@MainActivity).load()
+            customPolicyEvaluations = CustomPolicyEvaluator.evaluate(
+                policies = customPolicies,
+                openPorts = services.filter { it.reachable }.map { it.port }.toSet(),
+                hasHttps = services.any { it.reachable && it.port == 443 }
+            )
         }
     }
 
@@ -620,7 +631,8 @@ fun NetGuardApp(
     topology: NetworkTopology?,
     dnsSecurity: DnsSecurityResult?,
     vulnerabilityCandidates: List<VulnerabilityCandidate>,
-    riskTrend: List<RiskTrendPoint>
+    riskTrend: List<RiskTrendPoint>,
+    customPolicyEvaluations: List<CustomPolicyEvaluation>
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1263,6 +1275,10 @@ private fun AdvancedSecuritySection(
                         customDescription = ""
                     }
                 }) { Text("Save policy") }
+                customPolicyEvaluations.forEach { evaluation ->
+                    Text(evaluation.policy.id + " — " + if (evaluation.passed) "PASS" else "FAIL")
+                    Text(evaluation.evidence)
+                }
                 customPolicies.forEach { policy ->
                     Text(policy.id + " — " + policy.title)
                     Text(policy.description)
