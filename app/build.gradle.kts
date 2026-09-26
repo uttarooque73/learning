@@ -29,8 +29,6 @@ android {
                 storeFile = file(keystorePath)
                 storePassword = keystorePassword
                 this.keyAlias = keyAlias
-                // NetGuard's PKCS12 release keystore uses the store password
-                // for the private-key entry as well.
                 this.keyPassword = keystorePassword
             }
         }
@@ -41,7 +39,10 @@ android {
             val releaseKeystorePath = System.getenv("NETGUARD_KEYSTORE_PATH")
             val releaseKeystorePassword = System.getenv("NETGUARD_KEYSTORE_PASSWORD")
             val releaseKeyAlias = System.getenv("NETGUARD_KEY_ALIAS")
-            signingConfig = if (!releaseKeystorePath.isNullOrBlank() && !releaseKeystorePassword.isNullOrBlank() && !releaseKeyAlias.isNullOrBlank()) {
+            signingConfig = if (!releaseKeystorePath.isNullOrBlank() &&
+                !releaseKeystorePassword.isNullOrBlank() &&
+                !releaseKeyAlias.isNullOrBlank()
+            ) {
                 signingConfigs.getByName("release")
             } else {
                 null
@@ -73,6 +74,7 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.10.0")
+    implementation("androidx.fragment:fragment-ktx:1.9.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
