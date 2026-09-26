@@ -1,6 +1,7 @@
 package com.uttarooque73.netguard.mobile
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
@@ -185,7 +186,7 @@ object MobileSecurityAudit {
         val androidVersion = Build.VERSION.RELEASE ?: "unknown"
         val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { null }
         val appDataEncrypted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) true else null
-        val debuggableBuild = Build.IS_DEBUGGABLE
+        val debuggableBuild = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
         checks += MobileSecurityCheck(
             id = "MOB-DEV-005",
