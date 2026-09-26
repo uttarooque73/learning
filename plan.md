@@ -429,6 +429,7 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 - Network identity changes.
 - Finding state changes.
 - Remediation and verification events.
+- Persistent local timeline storage capped at 200 events.
 
 ### Feature 10 — Advanced Reporting
 **Status: Implemented — MVP**
@@ -442,10 +443,10 @@ Documentation: `docs/features/01-android-device-security-audit.md`
 ### Feature 11 — Configurable Security Policies
 **Status: Implemented — MVP**
 
-- User-defined checks.
-- Custom thresholds.
-- Home/work profiles.
-- Policy evaluation history.
+- User-defined policy profiles with separate rule sets.
+- Home/work policy profiles with profile-specific evaluation behavior.
+- Policy evaluation history remains represented by audit/report history.
+- Custom threshold support remains limited to the currently modeled policy inputs.
 
 ### Feature 12 — Security Learning Mode
 **Status: Implemented — MVP**
