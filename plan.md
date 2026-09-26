@@ -323,7 +323,6 @@ Phase 12 — hardening foundation complete:
 - bounded discovery/service audit behavior documented
 
 Remaining release work:
-- CI Android build/test execution
 - physical-device compatibility testing
 - runtime permission review
 - release build validation
