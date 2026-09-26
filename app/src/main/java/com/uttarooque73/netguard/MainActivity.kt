@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
         val localIp = info.localAddress ?: return
         val prefix = info.subnet?.substringAfter('/')?.toIntOrNull() ?: return
 
-lifecycleScope.launch {
+        lifecycleScope.launch {
             isDiscovering = true
             discoveryError = null
             runCatching { DeviceDiscovery().discover(localIp, prefix) }
