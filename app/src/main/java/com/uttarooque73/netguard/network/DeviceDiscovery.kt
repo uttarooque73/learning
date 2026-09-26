@@ -1,5 +1,6 @@
 package com.uttarooque73.netguard.network
 
+import com.uttarooque73.netguard.audit.ServiceCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -33,16 +34,17 @@ class DeviceDiscovery(
         host.takeUnless { it == ip }
     }.getOrNull()
 
-    private fun isReachable(ip: String): Boolean = try {
+    private fun isReachable(ip: String): Boolean {
+        if (ServiceCatalog.ports.any { (port, _) -> canConnect(ip, port) }) return true
+        return runCatching {
+            java.net.InetAddress.getByName(ip).isReachable(connectTimeoutMs)
+        }.getOrDefault(false)
+    }
+
+    private fun canConnect(ip: String, port: Int): Boolean = runCatching {
         Socket().use { socket ->
-            socket.connect(InetSocketAddress(ip, 80), connectTimeoutMs)
+            socket.connect(InetSocketAddress(ip, port), connectTimeoutMs)
             true
         }
-    } catch (_: Exception) {
-        try {
-            java.net.InetAddress.getByName(ip).isReachable(connectTimeoutMs)
-        } catch (_: Exception) {
-            false
-        }
-    }
+    }.getOrDefault(false)
 }
