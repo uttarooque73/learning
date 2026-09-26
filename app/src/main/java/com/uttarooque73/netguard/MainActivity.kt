@@ -3,6 +3,7 @@ package com.uttarooque73.netguard
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.SystemClock
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,6 +44,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.core.content.FileProvider
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
@@ -169,6 +173,10 @@ class MainActivity : ComponentActivity() {
     private var riskTrend by mutableStateOf<List<RiskTrendPoint>>(emptyList())
     private var selectedPolicyProfile by mutableStateOf("Home")
     private lateinit var timelineStore: SecurityTimelineStore
+    private lateinit var appLockPolicyStore: AppLockPolicyStore
+    private var appLocked by mutableStateOf(false)
+    private var authenticating = false
+    private var backgroundedAtElapsedMs = 0L
     private var timelineEvents by mutableStateOf<List<SecurityTimelineEvent>>(emptyList())
 
     private val locationPermissionLauncher = registerForActivityResult(
@@ -183,7 +191,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        inventoryStore = NetworkInventoryStore(this)
+        appLockPolicyStore = AppLockPolicyStore(this)\n        inventoryStore = NetworkInventoryStore(this)
         serviceStore = ServiceAuditStore(this)
         findingStore = FindingStore(this)
         remediationStore = RemediationStore(this)
@@ -264,6 +272,57 @@ class MainActivity : ComponentActivity() {
                 riskTrend = riskTrend
             )
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (appLockPolicyStore.load().enabled && appLockPolicyStore.load().lockOnBackground) {
+            backgroundedAtElapsedMs = SystemClock.elapsedRealtime()
+            appLocked = true
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (appLocked) authenticateApp()
+    }
+
+    private fun authenticateApp() {
+        if (authenticating) return
+        val policy = appLockPolicyStore.load()
+        if (!policy.enabled) {
+            appLocked = false
+            return
+        }
+        val manager = BiometricManager.from(this)
+        val authenticators = if (policy.requireBiometric) {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG
+        } else {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        }
+        if (manager.canAuthenticate(authenticators) != BiometricManager.BIOMETRIC_SUCCESS) return
+        authenticating = true
+        val executor = ContextCompat.getMainExecutor(this)
+        BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                authenticating = false
+                appLocked = false
+            }
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                authenticating = false
+                appLocked = true
+            }
+            override fun onAuthenticationFailed() {
+                appLocked = true
+            }
+        }).authenticate(
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Unlock NetGuard")
+                .setSubtitle("Authenticate to access security audit data")
+                .setAllowedAuthenticators(authenticators)
+                .setNegativeButtonText(if (policy.requireBiometric) "Cancel" else "Use device credential")
+                .build()
+        )
     }
 
     private fun requestNetworkPermissionAndInspect() {
