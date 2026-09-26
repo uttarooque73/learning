@@ -20,13 +20,18 @@ object AuditPackageImporter {
     private const val MAX_ENTRY_BYTES = 5L * 1024L * 1024L
     private const val MAX_TOTAL_BYTES = 10L * 1024L * 1024L
     private const val MAX_ITEMS = 10_000
+    private const val MAX_TOTAL_ITEMS = 30_000
+    private const val MAX_ENTRIES = 4
 
     fun readSnapshot(input: InputStream): AuditSnapshot {
         var totalBytes = 0L
+        var entryCount = 0
         var auditJson: ByteArray? = null
         ZipInputStream(input).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
+                entryCount++
+                require(entryCount <= MAX_ENTRIES) { "Audit package contains too many entries." }
                 require(!entry.isDirectory) { "Audit package contains a directory entry." }
                 require(entry.name == "audit.json" || entry.name == "findings.csv") { "Unsupported package entry: ${entry.name}" }
                 if (entry.name == "audit.json") {
@@ -47,6 +52,8 @@ object AuditPackageImporter {
         val findings = parseFindings(json.optJSONArray("findings") ?: JSONArray())
         val remediations = parseRemediations(json.optJSONArray("remediations") ?: JSONArray())
         val verifications = parseVerifications(json.optJSONArray("verifications") ?: JSONArray())
+        val totalItems = devices.size + services.size + findings.size + remediations.size + verifications.size
+        require(totalItems <= MAX_TOTAL_ITEMS) { "Audit package contains too many records." }
         return AuditSnapshot(
             id = requireText(json, "id"),
             createdAtEpochMs = json.getLong("createdAtEpochMs"),
