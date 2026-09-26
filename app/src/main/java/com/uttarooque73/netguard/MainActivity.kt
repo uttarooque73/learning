@@ -500,6 +500,15 @@ class MainActivity : FragmentActivity() {
                 openPorts = services.filter { it.reachable }.map { it.port }.toSet(),
                 hasHttps = services.any { it.reachable && it.port == 443 }
             )
+            if (customPolicyEvaluations.isNotEmpty()) {
+                val failed = customPolicyEvaluations.count { !it.passed }
+                recordTimeline(
+                    "policy",
+                    "Custom policies evaluated",
+                    failed.toString() + " failed, " +
+                        (customPolicyEvaluations.size - failed).toString() + " passed"
+                )
+            }
         }
     }
 
@@ -551,7 +560,8 @@ class MainActivity : FragmentActivity() {
             services = services,
             findings = findings,
             remediationRecords = remediationRecords,
-            verificationResults = verificationResults
+            verificationResults = verificationResults,
+            customPolicyEvaluations = customPolicyEvaluations
         )
         val entry = com.uttarooque73.netguard.report.AuditHistoryEntry(snapshot.id, snapshot.createdAtEpochMs, snapshot.devices.size, snapshot.services.size, snapshot.findings.size)
         auditHistory = (auditHistory + entry).takeLast(20)
