@@ -21,12 +21,17 @@ class DeviceDiscovery(
                 hosts.chunked(maxConcurrentChecks.coerceAtLeast(1)).flatMap { batch ->
                     batch.map { ip ->
                         async(Dispatchers.IO) {
-                            if (isReachable(ip)) DiscoveredDevice(ipAddress = ip, reachable = true) else null
+                            if (isReachable(ip)) DiscoveredDevice(ipAddress = ip, hostname = resolveHostname(ip), reachable = true) else null
                         }
                     }.awaitAll().filterNotNull()
                 }
             }
         }
+
+    private fun resolveHostname(ip: String): String? = runCatching {
+        val host = java.net.InetAddress.getByName(ip).canonicalHostName
+        host.takeUnless { it == ip }
+    }.getOrNull()
 
     private fun isReachable(ip: String): Boolean = try {
         Socket().use { socket ->
