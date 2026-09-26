@@ -39,6 +39,9 @@ import com.uttarooque73.netguard.network.NetworkInventoryStore
 import com.uttarooque73.netguard.audit.DiscoveredService
 import com.uttarooque73.netguard.audit.ServiceAudit
 import com.uttarooque73.netguard.audit.ServiceAuditStore
+import com.uttarooque73.netguard.audit.Finding
+import com.uttarooque73.netguard.audit.FindingStore
+import com.uttarooque73.netguard.audit.ServiceFindingRules
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -51,6 +54,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var serviceStore: ServiceAuditStore
     private var services by mutableStateOf<List<DiscoveredService>>(emptyList())
     private var auditingIp by mutableStateOf<String?>(null)
+    private var findings by mutableStateOf<List<Finding>>(emptyList())
+    private lateinit var findingStore: FindingStore
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -62,7 +67,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         inventoryStore = NetworkInventoryStore(this)
         serviceStore = ServiceAuditStore(this)
+        findingStore = FindingStore(this)
         services = serviceStore.load()
+        findings = findingStore.load()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -77,7 +84,8 @@ class MainActivity : ComponentActivity() {
                 onDiscoverDevices = ::discoverDevices,
                 services = services,
                 auditingIp = auditingIp,
-                onAuditDevice = ::auditDevice
+                onAuditDevice = ::auditDevice,
+                findings = findings
             )
         }
     }
@@ -109,6 +117,9 @@ class MainActivity : ComponentActivity() {
                 .onSuccess { found ->
                     services = services.filterNot { it.ipAddress == ipAddress } + found
                     serviceStore.save(services)
+                    val newFindings = found.mapNotNull(ServiceFindingRules::evaluate)
+                    findings = findings.filterNot { it.ipAddress == ipAddress } + newFindings
+                    findingStore.save(findings)
                 }
                 .onFailure { discoveryError = it.message ?: "Service audit failed." }
             auditingIp = null
@@ -146,7 +157,8 @@ fun NetGuardApp(
     onDiscoverDevices: () -> Unit,
     services: List<DiscoveredService>,
     auditingIp: String?,
-    onAuditDevice: (String) -> Unit
+    onAuditDevice: (String) -> Unit,
+    findings: List<Finding>
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -162,7 +174,8 @@ fun NetGuardApp(
                 onDiscoverDevices = onDiscoverDevices,
                 services = services,
                 auditingIp = auditingIp,
-                onAuditDevice = onAuditDevice
+                onAuditDevice = onAuditDevice,
+                findings = findings
             )
         }
     }
@@ -181,7 +194,8 @@ private fun Dashboard(
     onDiscoverDevices: () -> Unit,
     services: List<DiscoveredService>,
     auditingIp: String?,
-    onAuditDevice: (String) -> Unit
+    onAuditDevice: (String) -> Unit,
+    findings: List<Finding>
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(20.dp),
@@ -243,7 +257,7 @@ private fun Dashboard(
                 }
             }
             Screen.Network -> NetworkScreen(networkInfo)
-            Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice)
+            Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings)
         }
     }
 }
@@ -278,35 +292,28 @@ private fun DevicesScreen(
     isDiscovering: Boolean,
     services: List<DiscoveredService>,
     auditingIp: String?,
-    onAuditDevice: (String) -> Unit
+    onAuditDevice: (String) -> Unit,
+    findings: List<Finding>
 ) {
     Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
     if (isDiscovering) CircularProgressIndicator()
     if (!isDiscovering && devices.isEmpty()) Text("No reachable devices have been discovered.")
-
     devices.forEach { device ->
         val deviceServices = services.filter { it.ipAddress == device.ipAddress }
+        val deviceFindings = findings.filter { it.ipAddress == device.ipAddress }
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
                 Text("Status: " + if (device.reachable) "Reachable" else "Not reachable")
                 Text("Hostname: " + (device.hostname ?: "Unavailable"))
-                if (device.discoveredAtEpochMs > 0) {
-                    Text("Discovered: " + DateFormat.getDateTimeInstance().format(Date(device.discoveredAtEpochMs)))
-                }
-                Button(
-                    onClick = { onAuditDevice(device.ipAddress) },
-                    enabled = auditingIp == null
-                ) {
+                Button(onClick = { onAuditDevice(device.ipAddress) }, enabled = auditingIp == null) {
                     Text(if (auditingIp == device.ipAddress) "Auditing…" else "Audit Services")
                 }
-                if (deviceServices.isNotEmpty()) {
-                    Text("Open services", style = MaterialTheme.typography.titleSmall)
-                    deviceServices.forEach { service ->
-                        Text(service.port.toString() + "/"+service.protocol + " — " + service.serviceName)
-                    }
-                } else {
-                    Text("No audited services recorded")
+                deviceServices.forEach { service ->
+                    Text(service.port.toString() + "/" + service.protocol + " — " + service.serviceName)
+                }
+                deviceFindings.forEach { finding ->
+                    Text(finding.severity.name + ": " + finding.title)
                 }
             }
         }
