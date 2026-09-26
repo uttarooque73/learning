@@ -320,7 +320,7 @@ class MainActivity : ComponentActivity() {
                 .setTitle("Unlock NetGuard")
                 .setSubtitle("Authenticate to access security audit data")
                 .setAllowedAuthenticators(authenticators)
-                .setNegativeButtonText(if (policy.requireBiometric) "Cancel" else "Use device credential")
+                .apply { if (policy.requireBiometric) setNegativeButtonText("Cancel") }
                 .build()
         )
     }
