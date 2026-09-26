@@ -641,7 +641,7 @@ fun NetGuardApp(
                         NavigationDrawerItem(
                             label = { Text(screenTitle(screen)) },
                             selected = selectedScreen == screen,
-                            onClick = { selectedScreen = screen; drawerScope.launch { drawerState.close() } },
+                            onClick = { onSelectScreen(screen); drawerScope.launch { drawerState.close() } },
                             colors = NavigationDrawerItemDefaults.colors()
                         )
                     }
@@ -1136,7 +1136,6 @@ private fun MobileSecuritySection(
         )
         Button(onClick = onRefresh, enabled = !running) {
             Text(if (running) "Auditing..." else "Refresh mobile audit")
-        )
 
         if (snapshot == null) {
             Text("Mobile security audit has not run yet.")
@@ -1146,6 +1145,7 @@ private fun MobileSecuritySection(
             }
         }
     }
+}
 }
 
 @Composable
