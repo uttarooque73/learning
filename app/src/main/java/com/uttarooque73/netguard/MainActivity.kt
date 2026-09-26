@@ -3,6 +3,7 @@ package com.uttarooque73.netguard
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import androidx.core.content.FileProvider
 import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkDiscovery
@@ -206,7 +208,8 @@ class MainActivity : ComponentActivity() {
                 tlsResult = tlsResult,
                 httpResult = httpResult,
                 policyResults = policyResults,
-                onRunAdvancedAudit = ::runAdvancedAudit
+                onRunAdvancedAudit = ::runAdvancedAudit,
+                onExportReport = ::exportReport
             )
         }
     }
@@ -257,6 +260,39 @@ class MainActivity : ComponentActivity() {
                 .getOrNull()
             mobileAuditRunning = false
         }
+    }
+
+    private fun exportReport(format: String) {
+        val snapshot = AuditSnapshot(
+            id = java.util.UUID.randomUUID().toString(),
+            createdAtEpochMs = System.currentTimeMillis(),
+            network = networkInfo,
+            devices = devices,
+            services = services,
+            findings = findings,
+            remediationRecords = remediationRecords,
+            verificationResults = verificationResults
+        )
+        val file = when (format) {
+            "json" -> java.io.File(cacheDir, "netguard-audit-" + snapshot.id + ".json").also { it.writeText(AdvancedReportExporter.json(snapshot)) }
+            "csv" -> java.io.File(cacheDir, "netguard-audit-" + snapshot.id + ".csv").also { it.writeText(AdvancedReportExporter.csv(snapshot)) }
+            "pdf" -> AdvancedReportExporter.pdf(this, snapshot)
+            else -> AdvancedReportExporter.packageAudit(this, snapshot)
+        }
+        val uri = FileProvider.getUriForFile(this, "com.uttarooque73.netguard.fileprovider", file)
+        startActivity(Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply {
+                type = when (format) {
+                    "json" -> "application/json"
+                    "csv" -> "text/csv"
+                    "pdf" -> "application/pdf"
+                    else -> "application/zip"
+                }
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            },
+            "Share NetGuard report"
+        ))
     }
 
     private fun runAdvancedAudit(url: String?) {
@@ -444,7 +480,8 @@ fun NetGuardApp(
     tlsResult: TlsAuditResult?,
     httpResult: HttpSecurityResult?,
     policyResults: List<PolicyResult>,
-    onRunAdvancedAudit: (String?) -> Unit
+    onRunAdvancedAudit: (String?) -> Unit,
+    onExportReport: (String) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -491,7 +528,8 @@ fun NetGuardApp(
                 tlsResult = tlsResult,
                 httpResult = httpResult,
                 policyResults = policyResults,
-                onRunAdvancedAudit = onRunAdvancedAudit
+                onRunAdvancedAudit = onRunAdvancedAudit,
+                onExportReport = onExportReport
             )
         }
     }
@@ -541,7 +579,8 @@ private fun Dashboard(
     tlsResult: TlsAuditResult?,
     httpResult: HttpSecurityResult?,
     policyResults: List<PolicyResult>,
-    onRunAdvancedAudit: (String?) -> Unit
+    onRunAdvancedAudit: (String?) -> Unit,
+    onExportReport: (String) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -610,7 +649,7 @@ private fun Dashboard(
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
-            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, onRunAdvancedAudit)
+            Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, onRunAdvancedAudit, onExportReport)
         }
     }
 }
@@ -916,7 +955,8 @@ private fun AdvancedSecuritySection(
     tls: TlsAuditResult?,
     http: HttpSecurityResult?,
     policies: List<PolicyResult>,
-    onRunAudit: (String?) -> Unit
+    onRunAudit: (String?) -> Unit,
+    onExportReport: (String) -> Unit
 ) {
     var url by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
     Column(
@@ -927,6 +967,12 @@ private fun AdvancedSecuritySection(
         Text("Application, DNS, gateway, Wi-Fi trust, web security, policy, reporting and learning capabilities.")
 
         Button(onClick = { onRunAudit(url) }) { Text("Run security audit") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { onExportReport("json") }) { Text("JSON") }
+            Button(onClick = { onExportReport("csv") }) { Text("CSV") }
+            Button(onClick = { onExportReport("pdf") }) { Text("PDF") }
+            Button(onClick = { onExportReport("zip") }) { Text("ZIP") }
+        }
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
