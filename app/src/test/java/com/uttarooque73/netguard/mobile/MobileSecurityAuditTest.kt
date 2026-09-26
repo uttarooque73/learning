@@ -19,4 +19,14 @@ class MobileSecurityAuditTest {
         val checks = MobileSecurityAudit.javaClass.declaredMethods
         assertTrue(checks.any { it.name == "inspect" })
     }
+
+    @Test
+    fun deviceSecurityCheckIdsAreStable() {
+        val ids = MobileSecurityAudit.checkIds()
+        assertTrue(ids.contains("MOB-DEV-005"))
+        assertTrue(ids.contains("MOB-DEV-006"))
+        assertTrue(ids.contains("MOB-DEV-007"))
+        assertTrue(ids.contains("MOB-DEV-008"))
+        assertEquals(14, ids.size)
+    }
 }
