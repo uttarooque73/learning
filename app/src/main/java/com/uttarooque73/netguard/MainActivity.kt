@@ -733,13 +733,17 @@ fun NetGuardApp(
                 tlsResult = tlsResult,
                 httpResult = httpResult,
                 policyResults = policyResults,
+                selectedPolicyProfile = selectedPolicyProfile,
+                onSelectPolicyProfile = onSelectPolicyProfile,
+                onImportAuditPackage = onImportAuditPackage,
                 onRunAdvancedAudit = onRunAdvancedAudit,
                 onExportReport = onExportReport,
                 timelineEvents = timelineEvents,
                 topology = topology,
                 dnsSecurity = dnsSecurity,
                 vulnerabilityCandidates = vulnerabilityCandidates,
-                riskTrend = riskTrend
+                riskTrend = riskTrend,
+                customPolicyEvaluations = customPolicyEvaluations
             )
         }
     }
@@ -790,13 +794,17 @@ private fun Dashboard(
     tlsResult: TlsAuditResult?,
     httpResult: HttpSecurityResult?,
     policyResults: List<PolicyResult>,
+    selectedPolicyProfile: String,
+    onSelectPolicyProfile: (String) -> Unit,
+    onImportAuditPackage: () -> Unit,
     onRunAdvancedAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit,
     timelineEvents: List<SecurityTimelineEvent>,
     topology: NetworkTopology?,
     dnsSecurity: DnsSecurityResult?,
     vulnerabilityCandidates: List<VulnerabilityCandidate>,
-    riskTrend: List<RiskTrendPoint>
+    riskTrend: List<RiskTrendPoint>,
+    customPolicyEvaluations: List<CustomPolicyEvaluation>
 ) {
     Column(
         modifier = modifier
@@ -1220,6 +1228,8 @@ private fun AdvancedSecuritySection(
     tls: TlsAuditResult?,
     http: HttpSecurityResult?,
     policies: List<PolicyResult>,
+    selectedPolicyProfile: String,
+    onSelectPolicyProfile: (String) -> Unit,
     onRunAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit,
     timelineEvents: List<SecurityTimelineEvent>,
