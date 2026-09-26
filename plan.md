@@ -298,6 +298,14 @@ Phase 9 — complete for current MVP:
 - explicit baseline storage
 - manual opt-in monitoring check from the dashboard
 
+Phase 10 — complete for current MVP:
+- configurable baseline data model
+- default secure-home baseline
+- evidence-backed PASS/FAIL/REVIEW evaluation
+- local baseline persistence
+- dashboard baseline evaluation
+- explicit limitation: results are security baseline assessments, not formal certification claims
+
 Next:
-- Phase 10 Baselines & Compliance
+- Phase 11 Advanced Administration
 
