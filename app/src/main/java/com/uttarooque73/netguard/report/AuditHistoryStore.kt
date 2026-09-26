@@ -9,6 +9,9 @@ class AuditHistoryStore(context: Context) {
 
     fun save(snapshot: AuditSnapshot) {
         val root = runCatching { JSONArray(preferences.getString("snapshots", "[]")) }.getOrElse { JSONArray() }
+        for (i in root.length() - 1 downTo 0) {
+            if (root.optJSONObject(i)?.optString("id") == snapshot.id) root.remove(i)
+        }
         root.put(JSONObject().apply {
                 put("id", snapshot.id)
                 put("createdAtEpochMs", snapshot.createdAtEpochMs)
