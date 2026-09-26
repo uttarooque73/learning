@@ -29,11 +29,14 @@ data class HttpSecurityResult(
 
 object TlsHttpSecurityAudit {
     fun inspectTls(url: String, timeoutMs: Int = 3000): TlsAuditResult {
-        require(url.startsWith("https://", ignoreCase = true)) { "TLS audit requires an HTTPS URL." }
-        val connection = URI(url).toURL().openConnection() as HttpsURLConnection
+        val uri = runCatching { URI(url) }.getOrElse { error("Invalid URL.") }
+        require(uri.scheme.equals("https", true) && !uri.host.isNullOrBlank()) { "TLS audit requires a valid HTTPS URL." }
+        require(uri.userInfo == null && uri.fragment == null) { "URL user information/fragments are not supported." }
+        val connection = uri.toURL().openConnection() as HttpsURLConnection
         return try {
             connection.connectTimeout = timeoutMs
             connection.readTimeout = timeoutMs
+            connection.instanceFollowRedirects = false
             connection.requestMethod = "GET"
             connection.connect()
             val cert = connection.serverCertificates.firstOrNull() as? java.security.cert.X509Certificate
@@ -80,9 +83,11 @@ object TlsHttpSecurityAudit {
             val location = connection.getHeaderField("Location")
             val headers = connection.headerFields
                 .filterKeys { it != null }
-                .mapKeys { it.key!! }
+                .mapKeys { it.key!!.trim().lowercase() }
                 .mapValues { it.value.joinToString(", ") }
-            val httpsRedirect = location?.startsWith("https://", ignoreCase = true) ?: false
+            val httpsRedirect = location?.let {
+                runCatching { URI(it).scheme.equals("https", ignoreCase = true) }.getOrDefault(false)
+            } ?: false
             HttpSecurityResult(
                 url = url,
                 reachable = true,
@@ -91,10 +96,10 @@ object TlsHttpSecurityAudit {
                 headers = headers,
                 evidence = listOf(
                     "HTTP status: " + connection.responseCode,
-                    "HSTS: " + (headers["Strict-Transport-Security"] ?: "not observed"),
-                    "CSP: " + (headers["Content-Security-Policy"] ?: "not observed"),
-                    "X-Content-Type-Options: " + (headers["X-Content-Type-Options"] ?: "not observed"),
-                    "Referrer-Policy: " + (headers["Referrer-Policy"] ?: "not observed")
+                    "HSTS: " + (headers["strict-transport-security"] ?: "not observed"),
+                    "CSP: " + (headers["content-security-policy"] ?: "not observed"),
+                    "X-Content-Type-Options: " + (headers["x-content-type-options"] ?: "not observed"),
+                    "Referrer-Policy: " + (headers["referrer-policy"] ?: "not observed")
                 ),
                 remediation = listOf(
                     "Redirect HTTP traffic to HTTPS.",
