@@ -58,7 +58,8 @@ android {
         // AGP 8.7.3 lint/UAST toolchain. Other lint checks remain enabled.
         disable += setOf(
             "NullSafeMutableLiveData",
-            "FrequentlyChangingValue"
+            "FrequentlyChangingValue",
+            "RememberInComposition"
         )
     }
 
