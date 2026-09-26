@@ -18,7 +18,7 @@ object DnsGatewayAudit {
         val cm = context.getSystemService(ConnectivityManager::class.java)
         val network = cm.activeNetwork
         val lp = network?.let { cm.getLinkProperties(it) }
-        val dns = lp?.dnsServers.orEmpty().map(InetAddress::getHostAddress)
+        val dns = lp?.dnsServers.orEmpty().mapNotNull(InetAddress::getHostAddress)
         val gateway = lp?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress
         val resolved = gateway?.let { runCatching { InetAddress.getByName(it) }.isSuccess } ?: false
         val changed = previousGateway != null && gateway != null && previousGateway != gateway
