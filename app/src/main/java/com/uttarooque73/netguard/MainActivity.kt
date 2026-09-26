@@ -61,6 +61,11 @@ import com.uttarooque73.netguard.compliance.BaselineEvaluator
 import com.uttarooque73.netguard.compliance.BaselineResult
 import com.uttarooque73.netguard.compliance.BaselineStore
 import com.uttarooque73.netguard.compliance.DefaultBaselines
+import com.uttarooque73.netguard.admin.AdminStore
+import com.uttarooque73.netguard.admin.AdminEvent
+import com.uttarooque73.netguard.admin.AdminEventType
+import com.uttarooque73.netguard.admin.AssetMetadata
+import com.uttarooque73.netguard.admin.NetworkProfile
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -87,6 +92,10 @@ class MainActivity : ComponentActivity() {
     private var monitoring by mutableStateOf(false)
     private lateinit var baselineStore: BaselineStore
     private var baselineResults by mutableStateOf<List<BaselineResult>>(emptyList())
+    private lateinit var adminStore: AdminStore
+    private var profiles by mutableStateOf<List<NetworkProfile>>(emptyList())
+    private var assets by mutableStateOf<List<AssetMetadata>>(emptyList())
+    private var adminEvents by mutableStateOf<List<AdminEvent>>(emptyList())
     private var verificationResults by mutableStateOf<List<VerificationResult>>(emptyList())
     private var verifyingFindingId by mutableStateOf<String?>(null)
     private lateinit var findingStore: FindingStore
@@ -108,6 +117,7 @@ class MainActivity : ComponentActivity() {
         monitorStore = MonitorStore(this)
         monitorBaselineStore = MonitorBaselineStore(this)
         baselineStore = BaselineStore(this)
+        adminStore = AdminStore(this)
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
@@ -116,6 +126,9 @@ class MainActivity : ComponentActivity() {
         monitorEvents = monitorStore.load()
         val savedBaseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
         baselineResults = BaselineEvaluator.evaluate(savedBaseline, services)
+        profiles = adminStore.loadProfiles()
+        assets = adminStore.loadAssets()
+        adminEvents = adminStore.loadEvents()
         networkInfo = inventoryStore.loadNetwork()
         devices = inventoryStore.loadDevices()
         setContent {
@@ -146,7 +159,12 @@ class MainActivity : ComponentActivity() {
                 monitorEvents = monitorEvents,
                 onCheckChanges = ::checkForChanges,
                 baselineResults = baselineResults,
-                onEvaluateBaseline = ::evaluateBaseline
+                onEvaluateBaseline = ::evaluateBaseline,
+                profiles = profiles,
+                assets = assets,
+                adminEvents = adminEvents,
+                onCreateProfile = ::createProfile,
+                onUpdateAsset = ::updateAsset
             )
         }
     }
@@ -171,6 +189,26 @@ class MainActivity : ComponentActivity() {
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
+    private fun createProfile() {
+        val info = networkInfo ?: return
+        val profile = NetworkProfile(java.util.UUID.randomUUID().toString(), info.ssid ?: "Network", info.ssid, info.subnet)
+        profiles = (profiles.filterNot { it.ssid == profile.ssid } + profile)
+        adminStore.saveProfiles(profiles)
+        recordAdminEvent(AdminEventType.PROFILE_CREATED, profile.id, "Created profile ${profile.name}")
+    }
+
+    private fun updateAsset(ipAddress: String) {
+        val existing = assets.firstOrNull { it.ipAddress == ipAddress }
+        val updated = AssetMetadata(ipAddress, existing?.name ?: "", existing?.tags ?: emptyList(), existing?.notes ?: "")
+        assets = assets.filterNot { it.ipAddress == ipAddress } + updated
+        adminStore.saveAssets(assets)
+        recordAdminEvent(AdminEventType.ASSET_UPDATED, ipAddress, "Updated asset metadata")
+    }
+
+    private fun recordAdminEvent(type: AdminEventType, subject: String, detail: String) {
+        adminEvents = (adminEvents + AdminEvent(java.util.UUID.randomUUID().toString(), type, subject, detail)).takeLast(200)
+        adminStore.saveEvents(adminEvents)
+    }
     private fun evaluateBaseline() {
         val baseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
         baselineResults = BaselineEvaluator.evaluate(baseline, services)
@@ -293,7 +331,12 @@ fun NetGuardApp(
     monitorEvents: List<MonitorEvent>,
     onCheckChanges: () -> Unit,
     baselineResults: List<BaselineResult>,
-    onEvaluateBaseline: () -> Unit
+    onEvaluateBaseline: () -> Unit,
+    profiles: List<NetworkProfile>,
+    assets: List<AssetMetadata>,
+    adminEvents: List<AdminEvent>,
+    onCreateProfile: () -> Unit,
+    onUpdateAsset: (String) -> Unit
 ) {
     MaterialTheme {
         Scaffold(topBar = { TopAppBar(title = { Text("NetGuard") }) }) { padding ->
@@ -325,7 +368,12 @@ fun NetGuardApp(
                 monitorEvents = monitorEvents,
                 onCheckChanges = onCheckChanges,
                 baselineResults = baselineResults,
-                onEvaluateBaseline = onEvaluateBaseline
+                onEvaluateBaseline = onEvaluateBaseline,
+                profiles = profiles,
+                assets = assets,
+                adminEvents = adminEvents,
+                onCreateProfile = onCreateProfile,
+                onUpdateAsset = onUpdateAsset
             )
         }
     }
@@ -411,6 +459,7 @@ private fun Dashboard(
                 ReportSection(auditHistory, latestReport, onCreateReport)
                 MonitoringSection(monitoring, monitorEvents, onCheckChanges)
                 BaselineSection(baselineResults, onEvaluateBaseline)
+                AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
                 selectedFinding?.let { FindingDetail(it, onSelectFinding, remediationRecords, onStartRemediation, verificationResults, verifyingFindingId, onVerifyFinding) }
             }
             Screen.Network -> NetworkScreen(networkInfo)
@@ -608,6 +657,29 @@ private fun BaselineSection(
                 Text(result.status.name + " — " + result.title)
                 Text(result.evidence)
             }
+        }
+    }
+}
+@Composable
+private fun AdministrationSection(
+    profiles: List<NetworkProfile>,
+    assets: List<AssetMetadata>,
+    events: List<AdminEvent>,
+    onCreateProfile: () -> Unit,
+    onUpdateAsset: (String) -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Administration", style = MaterialTheme.typography.titleMedium)
+            Button(onClick = onCreateProfile) { Text("Save current network profile") }
+            Text("Profiles: " + profiles.size)
+            profiles.takeLast(5).forEach { Text(it.name + " — " + (it.subnet ?: "subnet unavailable")) }
+            Text("Asset metadata: " + assets.size)
+            assets.takeLast(5).forEach { asset ->
+                TextButton(onClick = { onUpdateAsset(asset.ipAddress) }) { Text(asset.ipAddress + " — edit metadata") }
+            }
+            Text("Administrative events: " + events.size)
+            events.takeLast(5).reversed().forEach { Text(it.type.name + " — " + it.subject) }
         }
     }
 }
