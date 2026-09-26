@@ -21,12 +21,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import java.text.DateFormat
+import java.util.Date
 import androidx.lifecycle.lifecycleScope
 import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.DiscoveredDevice
@@ -40,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private var devices by mutableStateOf<List<DiscoveredDevice>>(emptyList())
     private var isDiscovering by mutableStateOf(false)
     private var discoveryError by mutableStateOf<String?>(null)
+    private var selectedScreen by mutableStateOf(Screen.Dashboard)
     private lateinit var inventoryStore: NetworkInventoryStore
 
     private val locationPermissionLauncher = registerForActivityResult(
@@ -60,6 +64,8 @@ class MainActivity : ComponentActivity() {
                 isDiscovering = isDiscovering,
                 onStartAudit = ::requestNetworkPermissionAndInspect,
                 discoveryError = discoveryError,
+                selectedScreen = selectedScreen,
+                onSelectScreen = { selectedScreen = it },
                 onDiscoverDevices = ::discoverDevices
             )
         }
@@ -110,6 +116,8 @@ fun NetGuardApp(
     devices: List<DiscoveredDevice>,
     isDiscovering: Boolean,
     discoveryError: String?,
+    selectedScreen: Screen,
+    onSelectScreen: (Screen) -> Unit,
     onStartAudit: () -> Unit,
     onDiscoverDevices: () -> Unit
 ) {
@@ -121,6 +129,8 @@ fun NetGuardApp(
                 devices = devices,
                 isDiscovering = isDiscovering,
                 discoveryError = discoveryError,
+                selectedScreen = selectedScreen,
+                onSelectScreen = onSelectScreen,
                 onStartAudit = onStartAudit,
                 onDiscoverDevices = onDiscoverDevices
             )
@@ -135,6 +145,8 @@ private fun Dashboard(
     devices: List<DiscoveredDevice>,
     isDiscovering: Boolean,
     discoveryError: String?,
+    selectedScreen: Screen,
+    onSelectScreen: (Screen) -> Unit,
     onStartAudit: () -> Unit,
     onDiscoverDevices: () -> Unit
 ) {
@@ -182,28 +194,96 @@ private fun Dashboard(
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Discovered devices", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                if (isDiscovering) {
-                    CircularProgressIndicator()
-                } else if (devices.isEmpty()) {
-                    Text("No reachable devices found in the authorized local subnet.")
-                } else {
-                    devices.forEach { device ->
-                        Text("${device.ipAddress} — reachable")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            TextButton(onClick = { onSelectScreen(Screen.Dashboard) }) { Text("Dashboard") }
+            TextButton(onClick = { onSelectScreen(Screen.Network) }) { Text("Network") }
+            TextButton(onClick = { onSelectScreen(Screen.Devices) }) { Text("Devices (" + devices.size + ")") }
+        }
+
+        when (selectedScreen) {
+            Screen.Dashboard -> {
+                Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
+                Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
+                discoveryError?.let { error ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text("Discovery error: " + error, modifier = Modifier.padding(16.dp))
+                    }
+                }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Current network", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text("SSID: " + (networkInfo?.ssid ?: "Unavailable"))
+                        Text("Local IP: " + (networkInfo?.localAddress ?: "Unavailable"))
+                        Text("Gateway: " + (networkInfo?.gatewayAddress ?: "Unavailable"))
+                        Text("Subnet: " + (networkInfo?.subnet ?: "Unavailable"))
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
+                        Text(if (networkInfo == null) "Inspect Network" else "Refresh")
+                    }
+                    Button(
+                        onClick = onDiscoverDevices,
+                        enabled = networkInfo != null && !isDiscovering,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (isDiscovering) "Discovering…" else "Find Devices")
+                    }
+                }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Security posture", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text("No audit findings yet")
+                        Text("Phase 3 will add authorized service and exposure checks.")
                     }
                 }
             }
+            Screen.Network -> NetworkScreen(networkInfo)
+            Screen.Devices -> DevicesScreen(devices, isDiscovering)
         }
+    }
+}
 
+private enum class Screen { Dashboard, Network, Devices }
+
+@Composable
+private fun NetworkScreen(networkInfo: NetworkInfo?) {
+    Text("Network Inventory", style = MaterialTheme.typography.headlineSmall)
+    if (networkInfo == null) {
+        Text("No network inventory available. Inspect the current network first.")
+        return
+    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Connection", style = MaterialTheme.typography.titleMedium)
+            Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
+            Text("BSSID: " + (networkInfo.bssid ?: "Unavailable"))
+            Text("Interface: " + (networkInfo.interfaceName ?: "Unavailable"))
+            Text("Local address: " + (networkInfo.localAddress ?: "Unavailable"))
+            Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
+            Text("Subnet: " + (networkInfo.subnet ?: "Unavailable"))
+            Text("DNS: " + networkInfo.dnsServers.ifEmpty { listOf("Unavailable") }.joinToString())
+            Text("Wi-Fi security: " + (networkInfo.wifiSecurity ?: "Not determined"))
+        }
+    }
+}
+
+@Composable
+private fun DevicesScreen(devices: List<DiscoveredDevice>, isDiscovering: Boolean) {
+    Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
+    if (isDiscovering) CircularProgressIndicator()
+    if (!isDiscovering && devices.isEmpty()) Text("No reachable devices have been discovered.")
+    devices.forEach { device ->
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Security posture", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text("No audit findings yet")
-                Text("Phase 3 will add authorized service and exposure checks.")
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
+                Text("Status: " + if (device.reachable) "Reachable" else "Not reachable")
+                Text("Hostname: " + (device.hostname ?: "Unavailable"))
+                if (device.discoveredAtEpochMs > 0) {
+                    Text("Discovered: " + DateFormat.getDateTimeInstance().format(Date(device.discoveredAtEpochMs)))
+                }
             }
         }
     }
