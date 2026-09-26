@@ -7,10 +7,9 @@ import org.json.JSONObject
 class AuditHistoryStore(context: Context) {
     private val preferences = context.getSharedPreferences("netguard_audit_history", Context.MODE_PRIVATE)
 
-    fun save(snapshots: List<AuditSnapshot>) {
-        val root = JSONArray()
-        snapshots.takeLast(20).forEach { snapshot ->
-            root.put(JSONObject().apply {
+    fun save(snapshot: AuditSnapshot) {
+        val root = runCatching { JSONArray(preferences.getString("snapshots", "[]")) }.getOrElse { JSONArray() }
+        root.put(JSONObject().apply {
                 put("id", snapshot.id)
                 put("createdAtEpochMs", snapshot.createdAtEpochMs)
                 put("deviceCount", snapshot.devices.size)
@@ -20,8 +19,8 @@ class AuditHistoryStore(context: Context) {
                 put("findings", JSONArray(snapshot.findings.map { JSONObject().put("id", it.id).put("title", it.title).put("severity", it.severity.name).put("confidence", it.confidence.name).put("ipAddress", it.ipAddress).put("evidence", it.evidence).put("remediation", it.remediation).put("createdAtEpochMs", it.createdAtEpochMs) }))
                 put("remediations", JSONArray(snapshot.remediationRecords.map { JSONObject().put("findingId", it.findingId).put("ipAddress", it.ipAddress).put("status", it.status.name).put("startedAtEpochMs", it.startedAtEpochMs) }))
                 put("verifications", JSONArray(snapshot.verificationResults.map { JSONObject().put("findingId", it.findingId).put("ipAddress", it.ipAddress).put("status", it.status.name).put("beforeEvidence", it.beforeEvidence).put("afterEvidence", it.afterEvidence).put("verifiedAtEpochMs", it.verifiedAtEpochMs) }))
-            })
-        }
+        })
+        while (root.length() > 20) root.remove(0)
         preferences.edit().putString("snapshots", root.toString()).apply()
     }
 
