@@ -38,7 +38,14 @@ android {
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            val releaseKeystorePath = System.getenv("NETGUARD_KEYSTORE_PATH")
+            val releaseKeystorePassword = System.getenv("NETGUARD_KEYSTORE_PASSWORD")
+            val releaseKeyAlias = System.getenv("NETGUARD_KEY_ALIAS")
+            signingConfig = if (!releaseKeystorePath.isNullOrBlank() && !releaseKeystorePassword.isNullOrBlank() && !releaseKeyAlias.isNullOrBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                null
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
