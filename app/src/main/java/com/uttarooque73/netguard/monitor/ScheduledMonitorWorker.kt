@@ -7,6 +7,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.NetworkInventoryStore
+import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.security.NotificationHelper
 import com.uttarooque73.netguard.audit.ServiceAudit
 
@@ -29,9 +30,13 @@ class ScheduledMonitorWorker(
         if (!locationGranted) return Result.failure()
         return runCatching {
             val inventory = NetworkInventoryStore(context)
-            val network = inventory.loadNetwork() ?: return@runCatching 0
+            val previousNetwork = inventory.loadNetwork()
+            val network = NetworkDiscovery(context).inspect()
             val localIp = network.localAddress ?: return@runCatching 0
             val prefix = network.subnet?.substringAfter('/')?.toIntOrNull() ?: return@runCatching 0
+            if (previousNetwork == null || !sameNetwork(previousNetwork, network)) {
+                inventory.saveNetwork(network)
+            }
             val currentDevices = DeviceDiscovery().discover(localIp, prefix)
             val currentServices = currentDevices.flatMap { ServiceAudit().audit(it.ipAddress) }
             val baseline = MonitorBaselineStore(context)
@@ -55,4 +60,15 @@ class ScheduledMonitorWorker(
             events.size
         }.fold({ Result.success() }, { Result.retry() })
     }
+    private fun sameNetwork(
+        previous: com.uttarooque73.netguard.network.NetworkInfo,
+        current: com.uttarooque73.netguard.network.NetworkInfo
+    ): Boolean =
+        previous.interfaceName == current.interfaceName &&
+            previous.localAddress == current.localAddress &&
+            previous.gatewayAddress == current.gatewayAddress &&
+            previous.subnet == current.subnet &&
+            previous.ssid == current.ssid &&
+            previous.bssid == current.bssid
+
 }
