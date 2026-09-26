@@ -95,6 +95,13 @@ import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
 import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
+import com.uttarooque73.netguard.ui.ServicesFeatureScreen
+import com.uttarooque73.netguard.ui.FindingsFeatureScreen
+import com.uttarooque73.netguard.ui.RemediationFeatureScreen
+import com.uttarooque73.netguard.ui.WifiFeatureScreen
+import com.uttarooque73.netguard.ui.WebFeatureScreen
+import com.uttarooque73.netguard.ui.PolicyFeatureScreen
+import com.uttarooque73.netguard.ui.TimelineFeatureScreen
 import com.uttarooque73.netguard.features.timeline.SecurityTimelineEvent
 import com.uttarooque73.netguard.features.timeline.SecurityTimelineStore
 
@@ -708,7 +715,19 @@ private fun Dashboard(
             }
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
+            Screen.Services -> ServicesFeatureScreen(services)
+            Screen.Findings -> FindingsFeatureScreen(findings) { onSelectFinding(it) }
+            Screen.Remediation -> RemediationFeatureScreen(findings, remediationRecords, onStartRemediation, verificationResults, onVerifyFinding, verifyingFindingId)
+            Screen.Monitoring -> MonitoringSection(monitoring, monitorEvents, onCheckChanges)
+            Screen.Baseline -> BaselineSection(baselineResults, onEvaluateBaseline)
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
+            Screen.Wifi -> WifiFeatureScreen(wifiTrustResult)
+            Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
+            Screen.Policies -> PolicyFeatureScreen(policyResults, selectedPolicyProfile, onSelectPolicyProfile)
+            Screen.Timeline -> TimelineFeatureScreen(timelineEvents)
+            Screen.Reports -> ReportSection(auditHistory, latestReport, onCreateReport)
+            Screen.Administration -> AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
+            Screen.Learning -> LearningScreen()
             Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents)
         }
     }
@@ -716,6 +735,43 @@ private fun Dashboard(
 
 enum class Screen { Dashboard, Network, Devices, Services, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
+private fun screenTitle(screen: Screen): String = when (screen) {
+    Screen.Dashboard -> "Overview"
+    Screen.Network -> "Network"
+    Screen.Devices -> "Devices"
+    Screen.Services -> "Services"
+    Screen.Findings -> "Findings"
+    Screen.Remediation -> "Remediation"
+    Screen.Monitoring -> "Monitoring"
+    Screen.Baseline -> "Baseline"
+    Screen.Mobile -> "Mobile Security"
+    Screen.Wifi -> "Wi-Fi Trust"
+    Screen.Web -> "Web Security"
+    Screen.Policies -> "Security Policies"
+    Screen.Timeline -> "Security Timeline"
+    Screen.Reports -> "Reports"
+    Screen.Administration -> "Administration"
+    Screen.Learning -> "Security Learning"
+    Screen.Advanced -> "Advanced Security"
+}
+
+@Composable
+private fun LearningScreen() {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Security Learning Mode", style = MaterialTheme.typography.headlineMedium)
+        SecurityLearningMode.topics.forEach {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(it.title, style = MaterialTheme.typography.titleMedium)
+                    Text(it.explanation)
+                    Text("Evidence: " + it.evidenceGuide)
+                    Text("Remediation: " + it.remediationConcept)
+                    Text("Verification: " + it.verificationGuide)
+                }
+            }
+        }
+    }
+}
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
     Column(
