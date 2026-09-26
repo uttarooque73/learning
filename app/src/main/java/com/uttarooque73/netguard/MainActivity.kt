@@ -680,7 +680,11 @@ private fun Dashboard(
     policyResults: List<PolicyResult>,
     onRunAdvancedAudit: (String?) -> Unit,
     onExportReport: (String) -> Unit,
-    timelineEvents: List<SecurityTimelineEvent>
+    timelineEvents: List<SecurityTimelineEvent>,
+    topology: NetworkTopology?,
+    dnsSecurity: DnsSecurityResult?,
+    vulnerabilityCandidates: List<VulnerabilityCandidate>,
+    riskTrend: List<RiskTrendPoint>
 ) {
     Column(
         modifier = modifier
