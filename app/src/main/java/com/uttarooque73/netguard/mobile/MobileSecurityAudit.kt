@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.storage.StorageManager
 import android.provider.Settings
 import android.app.KeyguardManager
 
@@ -181,6 +182,82 @@ object MobileSecurityAudit {
             verification = "Refresh the audit after changing the radio state."
         )
 
+
+        val androidVersion = Build.VERSION.RELEASE ?: "unknown"
+        val securityPatch = Build.VERSION.SECURITY_PATCH.ifBlank { null }
+        val appDataEncrypted = runCatching {
+            context.getSystemService(StorageManager::class.java).isEncrypted(context.filesDir)
+        }.getOrNull()
+        val debuggableBuild = Build.IS_DEBUGGABLE
+
+        checks += MobileSecurityCheck(
+            id = "MOB-DEV-005",
+            title = "Android platform version",
+            status = if (androidVersion != "unknown") MobileCheckStatus.PASS else MobileCheckStatus.NOT_AVAILABLE,
+            evidence = if (androidVersion != "unknown") {
+                "Android " + androidVersion + " (SDK " + Build.VERSION.SDK_INT + ")."
+            } else {
+                "Android platform version is unavailable."
+            },
+            whyItMatters = "Android platform versions differ in available security controls and supported security APIs.",
+            remediation = listOf(
+                "Use a supported Android release when the device manufacturer provides one.",
+                "Keep the device's operating system updated through its normal system-update workflow."
+            ),
+            verification = "Refresh the audit and confirm the current Android version and SDK are reported."
+        )
+
+        checks += MobileSecurityCheck(
+            id = "MOB-DEV-006",
+            title = "Android security patch level",
+            status = if (securityPatch != null) MobileCheckStatus.PASS else MobileCheckStatus.REVIEW,
+            evidence = "Security patch level: " + (securityPatch ?: "unavailable"),
+            whyItMatters = "The Android security patch level identifies the security-update level reported by the device.",
+            remediation = listOf(
+                "Open Android Settings → System → Software update or the equivalent device update screen.",
+                "Install available security updates from the device manufacturer."
+            ),
+            verification = "Refresh the audit and confirm the device reports its security patch level."
+        )
+
+        checks += MobileSecurityCheck(
+            id = "MOB-DEV-007",
+            title = "App data encryption",
+            status = when (appDataEncrypted) {
+                true -> MobileCheckStatus.PASS
+                false -> MobileCheckStatus.FAIL
+                null -> MobileCheckStatus.NOT_AVAILABLE
+            },
+            evidence = when (appDataEncrypted) {
+                true -> "NetGuard's application data directory is reported as encrypted at rest."
+                false -> "NetGuard's application data directory is not reported as encrypted at rest."
+                null -> "Android did not provide an encryption-at-rest result for NetGuard's application data directory."
+            },
+            whyItMatters = "Encryption at rest reduces the risk of stored application data being exposed if storage is accessed outside normal Android protections.",
+            remediation = listOf(
+                "Keep Android and the device security software updated.",
+                "If this check fails, investigate the device's storage-encryption state and avoid storing sensitive information until the device is remediated."
+            ),
+            verification = "Refresh the audit and confirm NetGuard's application data directory is reported as encrypted."
+        )
+
+        checks += MobileSecurityCheck(
+            id = "MOB-DEV-008",
+            title = "Debuggable Android build",
+            status = if (debuggableBuild) MobileCheckStatus.REVIEW else MobileCheckStatus.PASS,
+            evidence = if (debuggableBuild) {
+                "Android reports a debuggable build."
+            } else {
+                "Android reports a non-debuggable build."
+            },
+            whyItMatters = "Debuggable Android builds expose debugging capabilities intended for development and testing.",
+            remediation = listOf(
+                "Use a production/non-debuggable device build for normal security-sensitive use.",
+                "If a debuggable build is intentional for development, keep the device controlled and do not treat the signal as proof of compromise."
+            ),
+            verification = "Refresh the audit and confirm the build is non-debuggable when production posture is required."
+        )
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             checks += MobileSecurityCheck(
                 id = "MOB-LIMIT-001",
@@ -195,4 +272,11 @@ object MobileSecurityAudit {
 
         return MobileSecuritySnapshot(checks)
     }
+
+    fun checkIds(): Set<String> = setOf(
+        "MOB-NET-001", "MOB-NET-002", "MOB-NET-003", "MOB-NET-004",
+        "MOB-DNS-001", "MOB-DEV-001", "MOB-DEV-002", "MOB-DEV-003",
+        "MOB-DEV-004", "MOB-DEV-005", "MOB-DEV-006", "MOB-DEV-007",
+        "MOB-DEV-008", "MOB-LIMIT-001"
+    )
 }
