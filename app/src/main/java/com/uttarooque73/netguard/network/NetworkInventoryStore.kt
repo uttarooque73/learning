@@ -46,6 +46,7 @@ class NetworkInventoryStore(context: Context) {
                 put("ipAddress", device.ipAddress)
                 putNullable("hostname", device.hostname)
                 put("reachable", device.reachable)
+                put("discoveredAtEpochMs", device.discoveredAtEpochMs)
             })
         }
         preferences.edit().putString(KEY_DEVICES, json.toString()).apply()
@@ -60,7 +61,8 @@ class NetworkInventoryStore(context: Context) {
                 DiscoveredDevice(
                     ipAddress = item.getString("ipAddress"),
                     hostname = item.optStringOrNull("hostname"),
-                    reachable = item.optBoolean("reachable")
+                    reachable = item.optBoolean("reachable"),
+                    discoveredAtEpochMs = item.optLong("discoveredAtEpochMs", 0L)
                 )
             }
         }.getOrElse { emptyList() }
