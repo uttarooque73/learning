@@ -650,8 +650,12 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun auditDevice(ipAddress: String) {
+        // Claim the single audit slot synchronously before launching the coroutine.
+        // This prevents rapid taps on multiple device buttons from queuing
+        // concurrent audits before Compose has recomposed with auditingIp.
+        if (auditingIp != null) return
+        auditingIp = ipAddress
         lifecycleScope.launch {
-            auditingIp = ipAddress
             runCatching { ServiceAudit().audit(ipAddress) }
                 .onSuccess { found ->
                     services = services.filterNot { it.ipAddress == ipAddress } + found
