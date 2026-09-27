@@ -34,17 +34,21 @@ class ScheduledMonitorWorker(
             val network = NetworkDiscovery(context).inspect()
             val localIp = network.localAddress ?: return@runCatching 0
             val prefix = network.subnet?.substringAfter('/')?.toIntOrNull() ?: return@runCatching 0
-            if (previousNetwork == null || !sameNetwork(previousNetwork, network)) {
+            val networkChanged = MonitorEngine.compareNetwork(previousNetwork, network)
+            if (previousNetwork == null || networkChanged.isNotEmpty()) {
                 inventory.saveNetwork(network)
+            }
+            val baseline = MonitorBaselineStore(context)
+            if (networkChanged.isNotEmpty()) {
+                baseline.clear()
             }
             val currentDevices = DeviceDiscovery().discover(localIp, prefix)
             val currentServices = currentDevices.flatMap { ServiceAudit().audit(it.ipAddress) }
-            val baseline = MonitorBaselineStore(context)
-            val previousDevices = baseline.loadDeviceIps().map {
+            val previousDevices = if (networkChanged.isNotEmpty()) emptyList() else baseline.loadDeviceIps().map {
                 com.uttarooque73.netguard.network.DiscoveredDevice(it, reachable = true)
             }
             val previousServices = baseline.loadServices()
-            val events = MonitorRunner.check(previousDevices, currentDevices, previousServices, currentServices)
+            val events = networkChanged + MonitorRunner.check(previousDevices, currentDevices, previousServices, currentServices)
             MonitorStore(context).let { store -> store.save((store.load() + events).takeLast(100)) }
             inventory.saveDevices(currentDevices)
             baseline.saveDevices(currentDevices)
@@ -60,15 +64,4 @@ class ScheduledMonitorWorker(
             events.size
         }.fold({ Result.success() }, { Result.retry() })
     }
-    private fun sameNetwork(
-        previous: com.uttarooque73.netguard.network.NetworkInfo,
-        current: com.uttarooque73.netguard.network.NetworkInfo
-    ): Boolean =
-        previous.interfaceName == current.interfaceName &&
-            previous.localAddress == current.localAddress &&
-            previous.gatewayAddress == current.gatewayAddress &&
-            previous.subnet == current.subnet &&
-            previous.ssid == current.ssid &&
-            previous.bssid == current.bssid
-
 }
