@@ -22,11 +22,25 @@ fun CallProtectionScreen(
     onUnblock: (String) -> Unit,
     onClearLogs: () -> Unit,
     onEnableScreening: () -> Unit,
-    screeningEnabled: Boolean
+    screeningEnabled: Boolean,
+    callLogError: String?,
+    onRequestCallLogPermission: () -> Unit,
+    callLogPermissionGranted: Boolean
 ) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Call Protection", style = MaterialTheme.typography.headlineSmall)
-        Text("Review calls seen by NetGuard and block unwanted numbers locally.")
+        Text("Review recent call history, see screening events, and block unwanted numbers locally.")
+
+        if (!callLogPermissionGranted) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Call history permission is not granted.", style = MaterialTheme.typography.titleMedium)
+                    Text("NetGuard needs this permission only to display your recent system call history here.")
+                    callLogError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Button(onClick = onRequestCallLogPermission) { Text("Allow call history") }
+                }
+            }
+        }
 
         if (!screeningEnabled) {
             Card(Modifier.fillMaxWidth()) {
