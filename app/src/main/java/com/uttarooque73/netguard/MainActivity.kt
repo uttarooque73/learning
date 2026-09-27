@@ -113,6 +113,7 @@ import com.uttarooque73.netguard.features.network.DnsSecurityResult
 import com.uttarooque73.netguard.features.vulnerability.CandidateVulnerabilityMapper
 import com.uttarooque73.netguard.features.vulnerability.VulnerabilityCandidate
 import com.uttarooque73.netguard.ui.IntelligenceScreen
+import com.uttarooque73.netguard.ui.FeatureListScreen
 import com.uttarooque73.netguard.ui.ServicesFeatureScreen
 import com.uttarooque73.netguard.ui.FindingsFeatureScreen
 import com.uttarooque73.netguard.ui.RemediationFeatureScreen
