@@ -570,3 +570,26 @@ For every feature:
 - Added explicit system Call Screening role request; NetGuard does not silently enable call blocking.
 - Blocked calls are rejected by the Android Telecom framework when NetGuard is the selected call-screening app.
 - Call protection data remains local; saved contact identity is resolved from NetGuard's selected contacts.
+
+
+## Screen-by-screen productivity review — 2026-09-27
+
+Implemented UX/productivity hardening across the existing security screens without changing the authorized-use security boundary:
+
+- Dashboard: retains posture, prioritized findings, audit profiles, network context, change summary, and next actions.
+- Network: clearer connection identity versus security context.
+- Devices: searchable inventory, finding-focused filter, exposure counts, and clearer per-device risk context.
+- Services: searchable exposure inventory, reachable-only filter, and asset/service summary.
+- Findings: searchable findings, severity filters, posture summary, and clearer evidence/remediation entry point.
+- Remediation: queue summary showing pending/completed work and verification coverage.
+- Monitoring: searchable change history with bounded recent-event display.
+- Baseline: pass/fail/review summary and explicit reevaluation action.
+- Reports: searchable audit history and clearer audit package/report actions.
+- Wi-Fi Trust: trust-state, evidence, remediation, and uncertainty explanation remain explicit.
+- Web Security: TLS/HTTP signal summary and review-signal count.
+- Security Policies: pass/review posture summary and profile switching.
+- Security Timeline: category filtering for investigation-focused review.
+- Security Learning: searchable lessons with progressive disclosure so the screen is easier to use as a learning tool.
+- Installed Applications, DNS/Gateway, Call Protection, Mobile Security, Contacts, Advanced Security, and Security Command Center were reviewed against their existing implementation and retained as dedicated workflows rather than duplicating them on the dashboard.
+
+This review focuses on making existing evidence actionable and reducing information overload rather than adding unsafe offensive capabilities.
