@@ -251,6 +251,8 @@ class MainActivity : FragmentActivity() {
         if (uri != null) importAuditPackage(uri)
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -304,7 +306,7 @@ class MainActivity : FragmentActivity() {
         mobileSecurity = MobileSecurityAudit.inspect(this)
         setContent {
             if (!authenticated) {
-                if (showSignUp || !userAccountStore.exists()) {
+                if (showSignUp) {
                     SignUpScreen(authDisplayName, authEmail, authPassword, authConfirmPassword, authError, { authDisplayName = it }, { authEmail = it }, { authPassword = it }, { authConfirmPassword = it }, { authError = if (authPassword != authConfirmPassword) "Passwords do not match." else userAccountStore.create(authEmail, authPassword.toCharArray(), authDisplayName).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; authConfirmPassword = ""; null }, { it.message ?: "Unable to create account." }) }, { showSignUp = false; authError = null }, { userAccountStore.enterGuestMode(); authenticated = true; authError = null })
                 } else {
                     LoginScreen(authEmail, authPassword, authError, { authEmail = it }, { authPassword = it }, { userAccountStore.login(authEmail, authPassword.toCharArray()).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; null }, { authError = it.message ?: "Login failed." }) }, { showSignUp = true; authError = null })
@@ -394,7 +396,8 @@ class MainActivity : FragmentActivity() {
                     getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true,
                 onObserveWifiTrust = ::observeWifiTrust,
                 fullSecurityCheckRunning = fullSecurityCheckRunning,
-                onRunFullSecurityCheck = ::runFullSecurityCheck
+                onRunFullSecurityCheck = ::runFullSecurityCheck,
+                onRequestNotificationPermission = ::requestNotificationPermission
                 )
             }
         }
@@ -459,6 +462,14 @@ class MainActivity : FragmentActivity() {
                 .apply { if (policy.requireBiometric) setNegativeButtonText("Cancel") }
                 .build()
         )
+    }
+
+    private fun requestNotificationPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     private fun requestNetworkPermissionAndInspect() {
@@ -1176,7 +1187,8 @@ fun NetGuardApp(
     callScreeningEnabled: Boolean,
     onObserveWifiTrust: () -> Unit,
     fullSecurityCheckRunning: Boolean,
-    onRunFullSecurityCheck: () -> Unit
+    onRunFullSecurityCheck: () -> Unit,
+    onRequestNotificationPermission: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1271,7 +1283,8 @@ fun NetGuardApp(
                 onExportInvestigation = onExportInvestigation,
                 onObserveWifiTrust = onObserveWifiTrust,
                 fullSecurityCheckRunning = fullSecurityCheckRunning,
-                onRunFullSecurityCheck = onRunFullSecurityCheck
+                onRunFullSecurityCheck = onRunFullSecurityCheck,
+                onRequestNotificationPermission = onRequestNotificationPermission
             )
         }
     }
@@ -1337,7 +1350,8 @@ private fun Dashboard(
     onExportInvestigation: () -> Unit,
     onObserveWifiTrust: () -> Unit,
     fullSecurityCheckRunning: Boolean,
-    onRunFullSecurityCheck: () -> Unit
+    onRunFullSecurityCheck: () -> Unit,
+    onRequestNotificationPermission: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -1482,6 +1496,7 @@ private fun Dashboard(
                             Text(item.title + " — " + item.purpose, style = MaterialTheme.typography.bodySmall)
                         }
                         Text("Contacts and call history are optional features.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LoadingTextButton(onClick = onRequestNotificationPermission) { Text("Enable security alerts") }
                     }
                 }
 
