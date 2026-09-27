@@ -28,7 +28,7 @@ object BaselineEvaluator {
                     val https = services.any { it.port == 443 && it.protocol == "TCP" && it.reachable }
                     when {
                         !http -> BaselineResult(check.id, check.title, BaselineStatus.PASS, "No reachable TCP/80 service observed.")
-                        https -> BaselineResult(check.id, check.title, BaselineStatus.REVIEW, "HTTP and HTTPS are both reachable; review whether HTTP redirects to HTTPS.")
+                        https -> BaselineResult(check.id, check.title, BaselineStatus.REVIEW, "TCP/80 and TCP/443 are reachable. Redirect behavior has not been verified by this service audit.")
                         else -> BaselineResult(check.id, check.title, BaselineStatus.FAIL, "HTTP is reachable without an observed HTTPS service.")
                     }
                 }
