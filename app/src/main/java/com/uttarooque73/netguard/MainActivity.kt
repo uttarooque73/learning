@@ -1503,6 +1503,22 @@ private fun Dashboard(
 
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Security history", style = MaterialTheme.typography.titleMedium)
+                        val latest = riskTrend.takeLast(5)
+                        if (latest.isEmpty()) {
+                            Text("Run a Full Security Check to start your score history.", style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            latest.forEach { point ->
+                                Text(java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(point.createdAtEpochMs)) + " — " + point.score + "/100 • " + point.findingCount + " findings", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        Text("Last check: " + (auditHistory.lastOrNull()?.createdAtEpochMs?.let { java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: "Not checked"))
+                        LoadingTextButton(onClick = { onSelectScreen(Screen.Reports) }) { Text("View full history") }
+                    }
+                }
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Permission Center", style = MaterialTheme.typography.titleMedium)
                         Text("NetGuard requests sensitive permissions only when the related feature needs them.")
                         PermissionCenter.explanations.take(3).forEach { item ->
