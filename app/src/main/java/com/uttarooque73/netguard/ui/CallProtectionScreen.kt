@@ -38,15 +38,23 @@ fun CallProtectionScreen(
     var filter by remember { mutableStateOf(CallFilter.ALL) }
     var numberToBlock by remember { mutableStateOf("") }
     var inputError by remember { mutableStateOf<String?>(null) }
+    var blockedSearch by remember { mutableStateOf("") }
+    var callSearch by remember { mutableStateOf("") }
+    var showClearConfirmation by remember { mutableStateOf(false) }
 
     val blockedCalls = logs.count { it.blocked }
     val missedCalls = logs.count { it.direction.equals("Missed", ignoreCase = true) }
-    val filteredLogs = logs.filter {
-        when (filter) {
+    val filteredLogs = logs.filter { log ->
+        val query = callSearch.trim()
+        val matchesSearch = query.isBlank() ||
+            log.number.contains(query, ignoreCase = true) ||
+            log.contactName?.contains(query, ignoreCase = true) == true ||
+            log.direction.contains(query, ignoreCase = true)
+        matchesSearch && when (filter) {
             CallFilter.ALL -> true
-            CallFilter.BLOCKED -> it.blocked
-            CallFilter.ALLOWED -> !it.blocked
-            CallFilter.MISSED -> it.direction.equals("Missed", ignoreCase = true)
+            CallFilter.BLOCKED -> log.blocked
+            CallFilter.ALLOWED -> !log.blocked
+            CallFilter.MISSED -> log.direction.equals("Missed", ignoreCase = true)
         }
     }
 
@@ -117,7 +125,7 @@ fun CallProtectionScreen(
                     )
                     Text(
                         if (screeningEnabled)
-                            "NetGuard can apply your local blocklist through Android's call-screening service."
+                            "Incoming calls matching your local blocklist can be rejected before they ring. Outgoing calls are not blocked by this service."
                         else
                             "Enable the Android call-screening role before blocked numbers can be automatically rejected.",
                         style = MaterialTheme.typography.bodySmall,
@@ -194,7 +202,20 @@ fun CallProtectionScreen(
         }
 
         if (blockedNumbers.isNotEmpty()) {
-            items(blockedNumbers.toList().sorted()) { number ->
+            item {
+                OutlinedTextField(
+                    value = blockedSearch,
+                    onValueChange = { blockedSearch = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Search blocked numbers") },
+                    placeholder = { Text("Search by number") }
+                )
+            }
+            val visibleBlockedNumbers = blockedNumbers.toList().sorted().filter {
+                blockedSearch.isBlank() || it.contains(blockedSearch.trim(), ignoreCase = true)
+            }
+            items(visibleBlockedNumbers) { number ->
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -218,9 +239,20 @@ fun CallProtectionScreen(
                     )
                 }
                 if (logs.isNotEmpty()) {
-                    LoadingTextButton(onClick = onClearLogs) { Text("Clear") }
+                    LoadingTextButton(onClick = { showClearConfirmation = true }) { Text("Clear") }
                 }
             }
+        }
+
+        item {
+            OutlinedTextField(
+                value = callSearch,
+                onValueChange = { callSearch = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Search recent calls") },
+                placeholder = { Text("Number, contact or direction") }
+            )
         }
 
         item {
@@ -257,6 +289,23 @@ fun CallProtectionScreen(
                 CallLogCard(log, onBlock)
             }
         }
+    }
+
+    if (showClearConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text("Clear recent calls?") },
+            text = { Text("This removes NetGuard's locally recorded screening events. Android's system call history is not deleted.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearConfirmation = false
+                    onClearLogs()
+                }) { Text("Clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmation = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
