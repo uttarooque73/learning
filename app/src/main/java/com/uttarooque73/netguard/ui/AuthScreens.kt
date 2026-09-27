@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.File
 import com.uttarooque73.netguard.security.SavedContact
+import com.uttarooque73.netguard.security.UserContactStore
 
 @Composable
 fun LoginScreen(
@@ -138,35 +139,146 @@ fun ContactNumbersScreen(
     onAddContact: (SavedContact) -> Unit,
     onRemoveContact: (String) -> Unit
 ) {
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Mobile Numbers", style = MaterialTheme.typography.headlineSmall)
-        Text("Choose numbers from your Android contacts. NetGuard stores only the selected name and number locally.")
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (deviceContacts.isEmpty()) {
-            Text("No phone contacts are available, or Contacts permission has not been granted.")
-        } else {
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(deviceContacts, key = { it.id + it.phoneNumber }) { contact ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column(Modifier.weight(1f)) {
-                                Text(contact.name, style = MaterialTheme.typography.titleSmall)
-                                Text(contact.phoneNumber)
-                            }
-                            LoadingButton(onClick = { onAddContact(contact) }) { Text("Add") }
-                        }
+    var search by remember { mutableStateOf("") }
+    var showSavedOnly by remember { mutableStateOf(false) }
+    val savedNumbers = remember(savedContacts) {
+        savedContacts.map { UserContactStore.normalizePhone(it.phoneNumber) }.toSet()
+    }
+    val query = search.trim()
+    val filteredDeviceContacts = deviceContacts.filter { contact ->
+        query.isBlank() ||
+            contact.name.contains(query, ignoreCase = true) ||
+            contact.phoneNumber.contains(query, ignoreCase = true)
+    }
+    val filteredSavedContacts = savedContacts.filter { contact ->
+        query.isBlank() ||
+            contact.name.contains(query, ignoreCase = true) ||
+            contact.phoneNumber.contains(query, ignoreCase = true)
+    }
+
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Mobile Numbers", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "Select trusted contact numbers for quick access in NetGuard. Only selected name and number values are stored locally.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        error?.let {
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(it, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onErrorContainer)
+            }
+        }
+        OutlinedTextField(
+            value = search,
+            onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Search contacts") },
+            placeholder = { Text("Name or mobile number") }
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                selected = !showSavedOnly,
+                onClick = { showSavedOnly = false },
+                label = { Text("Contacts") }
+            )
+            FilterChip(
+                selected = showSavedOnly,
+                onClick = { showSavedOnly = true },
+                label = { Text("Selected (${savedContacts.size})") }
+            )
+        }
+
+        if (showSavedOnly) {
+            if (filteredSavedContacts.isEmpty()) {
+                EmptyContactState("No selected numbers match your search.")
+            } else {
+                LazyColumn(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(filteredSavedContacts, key = { it.id }) { contact ->
+                        ContactNumberCard(contact, true, { onRemoveContact(contact.id) }, "Remove")
                     }
                 }
             }
-        }
-        if (savedContacts.isNotEmpty()) {
-            Text("Selected numbers", style = MaterialTheme.typography.titleMedium)
-            savedContacts.forEach { contact ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(contact.name + " — " + contact.phoneNumber, modifier = Modifier.weight(1f))
-                    LoadingTextButton(onClick = { onRemoveContact(contact.id) }) { Text("Remove") }
+        } else if (deviceContacts.isEmpty()) {
+            EmptyContactState(
+                if (error != null) "Contacts could not be loaded. Check the Contacts permission."
+                else "No phone numbers were found in your contacts."
+            )
+        } else if (filteredDeviceContacts.isEmpty()) {
+            EmptyContactState("No contacts match \"$query\".")
+        } else {
+            LazyColumn(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(filteredDeviceContacts, key = { it.id + "|" + it.phoneNumber }) { contact ->
+                    val selected = UserContactStore.normalizePhone(contact.phoneNumber) in savedNumbers
+                    ContactNumberCard(
+                        contact,
+                        selected,
+                        { if (!selected) onAddContact(contact) },
+                        if (selected) "Added" else "Add"
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ContactNumberCard(
+    contact: SavedContact,
+    selected: Boolean,
+    onAction: () -> Unit,
+    actionLabel: String
+) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(contact.name, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    contact.phoneNumber,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (selected) {
+                AssistChip(onClick = {}, label = { Text(actionLabel) })
+            } else {
+                LoadingButton(onClick = onAction) { Text(actionLabel) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyContactState(message: String) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.fillMaxWidth().padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("No numbers to show", style = MaterialTheme.typography.titleMedium)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
