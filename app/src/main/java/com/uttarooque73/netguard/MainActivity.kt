@@ -366,7 +366,7 @@ class MainActivity : FragmentActivity() {
                 onUnblockNumber = ::unblockNumber,
                 onClearCallLogs = { callProtectionStore.clearLogs(); refreshCallProtection() },
                 onEnableCallScreening = { requestCallScreeningRole(this) },
-                callScreeningEnabled = getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true,
+                callScreeningEnabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&\n                    getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true,
                 onObserveWifiTrust = ::observeWifiTrust
                 )
             }
