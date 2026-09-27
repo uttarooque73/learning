@@ -1,6 +1,7 @@
 package com.uttarooque73.netguard.report
 
 import com.uttarooque73.netguard.audit.DiscoveredService
+import com.uttarooque73.netguard.audit.FindingSeverity
 import com.uttarooque73.netguard.features.policy.CustomPolicyEvaluation
 import com.uttarooque73.netguard.audit.Finding
 import com.uttarooque73.netguard.network.DiscoveredDevice
@@ -19,8 +20,6 @@ data class AuditSnapshot(
     val verificationResults: List<VerificationResult>,
     val customPolicyEvaluations: List<CustomPolicyEvaluation> = emptyList()
 )
-
-import com.uttarooque73.netguard.audit.FindingSeverity
 
 data class AuditSnapshotDiff(
     val addedDevices: List<String>,
