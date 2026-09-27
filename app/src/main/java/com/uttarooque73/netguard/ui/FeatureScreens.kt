@@ -79,13 +79,35 @@ fun RemediationFeatureScreen(findings: List<Finding>, records: List<RemediationR
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(finding.title, style = MaterialTheme.typography.titleMedium)
-                Text("Status: " + (record?.status ?: RemediationStatus.NOT_STARTED))
+                val status = record?.status ?: RemediationStatus.NOT_STARTED
+                Text("Status: " + status)
+                Text("Remediation guidance", style = MaterialTheme.typography.titleSmall)
                 Text(finding.remediation)
+                Text("Verification: " + finding.verification, style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onStart(finding) }) { Text("Start") }
-                    Button(onClick = { onVerify(finding) }, enabled = verifying == null) { Text(if (verifying == finding.id) "Verifying…" else "Verify") }
+                    Button(
+                        onClick = { onStart(finding) },
+                        enabled = status == RemediationStatus.NOT_STARTED || status == RemediationStatus.CANCELLED
+                    ) {
+                        Text(
+                            when (status) {
+                                RemediationStatus.IN_PROGRESS -> "Started"
+                                RemediationStatus.COMPLETED -> "Completed"
+                                else -> "Start"
+                            }
+                        )
+                    }
+                    Button(
+                        onClick = { onVerify(finding) },
+                        enabled = verifying == null && status != RemediationStatus.NOT_STARTED
+                    ) {
+                        Text(if (verifying == finding.id) "Verifying…" else "Verify")
+                    }
                 }
-                results.firstOrNull { it.findingId == finding.id && it.ipAddress == finding.ipAddress }?.let { Text("Verification: " + it.status) }
+                results.firstOrNull { it.findingId == finding.id && it.ipAddress == finding.ipAddress }?.let {
+                    Text("Last verification: " + it.status)
+                    Text("After evidence: " + it.afterEvidence)
+                }
             }
         }
     }
