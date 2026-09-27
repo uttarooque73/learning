@@ -146,6 +146,8 @@ import com.uttarooque73.netguard.ui.LoginScreen
 import com.uttarooque73.netguard.ui.SignUpScreen
 import com.uttarooque73.netguard.ui.ProfileScreen
 import com.uttarooque73.netguard.ui.CallProtectionScreen
+import com.uttarooque73.netguard.ui.LoadingButton
+import com.uttarooque73.netguard.ui.LoadingTextButton
 import com.uttarooque73.netguard.ui.requestCallScreeningRole
 import com.uttarooque73.netguard.security.CallProtectionStore
 
@@ -1121,7 +1123,7 @@ fun NetGuardApp(
                 }
             }
         ) {
-            Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { TextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
+            Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { LoadingTextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
             if (selectedScreen == Screen.Profile && userProfile != null) {
                 ProfileScreen(userProfile!!, profileName, selectedProfileImage, authError, onProfileNameChange, onSelectProfileImage, onSaveProfile, onLogout)
             } else if (selectedScreen == Screen.Contacts) {
@@ -1293,10 +1295,10 @@ private fun Dashboard(
                 }
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
+                    LoadingButton(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
                         Text(if (networkInfo == null) "Inspect Network" else "Refresh")
                     }
-                    Button(
+                    LoadingButton(
                         onClick = onDiscoverDevices,
                         enabled = networkInfo != null && !isDiscovering,
                         modifier = Modifier.weight(1f)
@@ -1451,7 +1453,7 @@ private fun DevicesScreen(
                 Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
                 Text("Status: " + if (device.reachable) "Reachable" else "Not reachable")
                 Text("Hostname: " + (device.hostname ?: "Unavailable"))
-                Button(onClick = { onAuditDevice(device.ipAddress) }, enabled = auditingIp == null) {
+                LoadingButton(onClick = { onAuditDevice(device.ipAddress) }, enabled = auditingIp == null) {
                     Text(if (auditingIp == device.ipAddress) "Auditing…" else "Audit Services")
                 }
                 if (deviceServices.isEmpty()) {
@@ -1468,7 +1470,7 @@ private fun DevicesScreen(
                 if (deviceFindings.isNotEmpty()) {
                     Text("Findings", style = MaterialTheme.typography.titleSmall)
                     deviceFindings.forEach { finding ->
-                        TextButton(onClick = { onSelectFinding(finding) }) {
+                        LoadingTextButton(onClick = { onSelectFinding(finding) }) {
                             Text(finding.severity.name + ": " + finding.title)
                         }
                     }
@@ -1492,7 +1494,7 @@ private fun RiskDashboard(findings: List<Finding>, onSelectFinding: (Finding?) -
             Text("Low: " + findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.LOW })
             if (findings.isEmpty()) Text("No findings recorded yet. Audit discovered devices to populate findings.")
             findings.take(5).forEach { finding ->
-                TextButton(onClick = { onSelectFinding(finding) }) {
+                LoadingTextButton(onClick = { onSelectFinding(finding) }) {
                     Text(finding.severity.name + " — " + finding.title + " (" + finding.ipAddress + ")")
                 }
             }
@@ -1536,20 +1538,20 @@ private fun FindingDetail(
                     Text("Before: " + it.beforeEvidence)
                     Text("After: " + it.afterEvidence)
                 }
-                Button(
+                LoadingButton(
                     onClick = { onVerifyFinding(finding) },
                     enabled = verifyingFindingId == null
                 ) {
                     Text(if (verifyingFindingId == finding.id) "Verifying..." else "Verify now")
                 }
-                Button(
+                LoadingButton(
                     onClick = { onStartRemediation(finding) },
                     enabled = record?.status != RemediationStatus.IN_PROGRESS
                 ) {
                     Text(if (record?.status == RemediationStatus.IN_PROGRESS) "Remediation in progress" else "Start guided remediation")
                 }
             }
-            TextButton(onClick = { onClose(null) }) { Text("Close") }
+            LoadingTextButton(onClick = { onClose(null) }) { Text("Close") }
         }
     }
 }
@@ -1564,8 +1566,8 @@ private fun ReportSection(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Reports & audit history", style = MaterialTheme.typography.titleMedium)
-            Button(onClick = onCreateReport) { Text("Create audit report") }
-            Button(onClick = onImportAuditPackage) { Text("Import audit package") }
+            LoadingButton(onClick = onCreateReport) { Text("Create audit report") }
+            LoadingButton(onClick = onImportAuditPackage) { Text("Import audit package") }
             Text("Saved audits: " + history.size)
             history.takeLast(5).reversed().forEach { entry ->
                 val created = java.text.SimpleDateFormat(
@@ -1596,7 +1598,7 @@ private fun MonitoringSection(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Monitoring", style = MaterialTheme.typography.titleMedium)
             Text("Compares the current authorized inventory and network context with the saved monitoring baseline. It does not perform a new network scan.")
-            Button(onClick = onCheckChanges, enabled = !monitoring) {
+            LoadingButton(onClick = onCheckChanges, enabled = !monitoring) {
                 Text(if (monitoring) "Checking..." else "Check for changes")
             }
             Text("Changes detected: " + events.size)
@@ -1620,7 +1622,7 @@ private fun BaselineSection(
             Text("Security baseline", style = MaterialTheme.typography.titleMedium)
             Text("Selected local baseline: Secure Home Network")
             Text("Results are based on currently audited reachable services.")
-            Button(onClick = onEvaluate) { Text("Evaluate baseline") }
+            LoadingButton(onClick = onEvaluate) { Text("Evaluate baseline") }
 
             if (results.isNotEmpty()) {
                 val passCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.PASS }
@@ -1652,12 +1654,12 @@ private fun AdministrationSection(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Administration", style = MaterialTheme.typography.titleMedium)
-            Button(onClick = onCreateProfile) { Text("Save current network profile") }
+            LoadingButton(onClick = onCreateProfile) { Text("Save current network profile") }
             Text("Profiles: " + profiles.size)
             profiles.takeLast(5).forEach { Text(it.name + " — " + (it.subnet ?: "subnet unavailable")) }
             Text("Asset metadata: " + assets.size)
             assets.takeLast(5).forEach { asset ->
-                TextButton(onClick = { onUpdateAsset(asset.ipAddress) }) { Text(asset.ipAddress + " — edit metadata") }
+                LoadingTextButton(onClick = { onUpdateAsset(asset.ipAddress) }) { Text(asset.ipAddress + " — edit metadata") }
             }
             Text("Administrative events: " + events.size)
             events.takeLast(5).reversed().forEach { Text(it.type.name + " — " + it.subject) }
@@ -1682,7 +1684,7 @@ private fun WifiTrustPage(result: WifiTrustResult?, onObserve: () -> Unit) {
                     result?.evidence
                         ?: "No observation yet. Observe the current Wi-Fi identity to create a baseline."
                 )
-                Button(onClick = onObserve) {
+                LoadingButton(onClick = onObserve) {
                     Text(if (result == null) "Observe current Wi-Fi" else "Recheck Wi-Fi")
                 }
                 result?.remediation?.takeIf { it.isNotEmpty() }?.let { guidance ->
@@ -1713,7 +1715,7 @@ private fun MobileSecuritySection(
         Text(
             "Android device and cellular security posture. Checks are evidence-based; REVIEW does not mean a compromise."
         )
-        Button(onClick = onRefresh, enabled = !running) {
+        LoadingButton(onClick = onRefresh, enabled = !running) {
             Text(if (running) "Auditing..." else "Refresh mobile audit")
         }
 
@@ -1788,21 +1790,21 @@ private fun AdvancedSecuritySection(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Scheduled monitoring", style = MaterialTheme.typography.titleMedium)
                 Text("Runs bounded discovery and service audits periodically and records inventory changes locally.")
-                Button(onClick = {
+                LoadingButton(onClick = {
                     scheduled = scheduled.copy(enabled = !scheduled.enabled)
                     scheduledStore.save(scheduled)
                     ScheduledMonitorScheduler.apply(context, scheduled)
                 }) { Text(if (scheduled.enabled) "Disable schedule" else "Enable schedule") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1L, 6L, 24L).forEach { hours ->
-                        TextButton(onClick = {
+                        LoadingTextButton(onClick = {
                             scheduled = scheduled.copy(intervalHours = hours)
                             scheduledStore.save(scheduled)
                             if (scheduled.enabled) ScheduledMonitorScheduler.apply(context, scheduled)
                         }) { Text(hours.toString() + "h") }
                     }
                 }
-                TextButton(onClick = {
+                LoadingTextButton(onClick = {
                     scheduled = scheduled.copy(notifyOnChanges = !scheduled.notifyOnChanges)
                     scheduledStore.save(scheduled)
                 }) { Text("Notifications: " + if (scheduled.notifyOnChanges) "ON" else "OFF") }
@@ -1814,15 +1816,15 @@ private fun AdvancedSecuritySection(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("App protection policy", style = MaterialTheme.typography.titleMedium)
                 Text("Policy is persisted locally and exposes the intended protection posture.")
-                TextButton(onClick = {
+                LoadingTextButton(onClick = {
                     lockPolicy = lockPolicy.copy(enabled = !lockPolicy.enabled)
                     lockStore.save(lockPolicy)
                 }) { Text("App lock: " + if (lockPolicy.enabled) "ENABLED" else "DISABLED") }
-                TextButton(onClick = {
+                LoadingTextButton(onClick = {
                     lockPolicy = lockPolicy.copy(lockOnBackground = !lockPolicy.lockOnBackground)
                     lockStore.save(lockPolicy)
                 }) { Text("Lock on background: " + if (lockPolicy.lockOnBackground) "ON" else "OFF") }
-                TextButton(onClick = {
+                LoadingTextButton(onClick = {
                     lockPolicy = lockPolicy.copy(requireBiometric = !lockPolicy.requireBiometric)
                     lockStore.save(lockPolicy)
                 }) { Text("Require biometric: " + if (lockPolicy.requireBiometric) "ON" else "OFF") }
@@ -1835,7 +1837,7 @@ private fun AdvancedSecuritySection(
                 androidx.compose.material3.OutlinedTextField(value = customId, onValueChange = { customId = it }, label = { Text("Policy ID") }, modifier = Modifier.fillMaxWidth())
                 androidx.compose.material3.OutlinedTextField(value = customTitle, onValueChange = { customTitle = it }, label = { Text("Title") }, modifier = Modifier.fillMaxWidth())
                 androidx.compose.material3.OutlinedTextField(value = customDescription, onValueChange = { customDescription = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
-                TextButton(onClick = {
+                LoadingTextButton(onClick = {
                     customRuleType = when (customRuleType) {
                         CustomPolicyRuleType.INFORMATIONAL -> CustomPolicyRuleType.BLOCK_PORT
                         CustomPolicyRuleType.BLOCK_PORT -> CustomPolicyRuleType.REQUIRE_HTTPS
@@ -1850,7 +1852,7 @@ private fun AdvancedSecuritySection(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                Button(onClick = {
+                LoadingButton(onClick = {
                     runCatching {
                         CustomPolicy(
                             id = customId.trim(),
@@ -1875,7 +1877,7 @@ private fun AdvancedSecuritySection(
                 customPolicies.forEach { policy ->
                     Text(policy.id + " — " + policy.title)
                     Text(policy.description)
-                    TextButton(onClick = {
+                    LoadingTextButton(onClick = {
                         customStore.delete(policy.id)
                         customPolicies = customStore.load()
                     }) { Text("Delete") }
@@ -1883,12 +1885,12 @@ private fun AdvancedSecuritySection(
             }
         }
 
-        Button(onClick = { onRunAudit(url) }) { Text("Run security audit") }
+        LoadingButton(onClick = { onRunAudit(url) }) { Text("Run security audit") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { onExportReport("json") }) { Text("JSON") }
-            Button(onClick = { onExportReport("csv") }) { Text("CSV") }
-            Button(onClick = { onExportReport("pdf") }) { Text("PDF") }
-            Button(onClick = { onExportReport("zip") }) { Text("ZIP") }
+            LoadingButton(onClick = { onExportReport("json") }) { Text("JSON") }
+            LoadingButton(onClick = { onExportReport("csv") }) { Text("CSV") }
+            LoadingButton(onClick = { onExportReport("pdf") }) { Text("PDF") }
+            LoadingButton(onClick = { onExportReport("zip") }) { Text("ZIP") }
         }
 
         Card(Modifier.fillMaxWidth()) {
@@ -1933,8 +1935,8 @@ private fun AdvancedSecuritySection(
                 Text("Security policies", style = MaterialTheme.typography.titleMedium)
                 Text("Profile: " + selectedPolicyProfile)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { onSelectPolicyProfile("Home") }) { Text("Home") }
-                    TextButton(onClick = { onSelectPolicyProfile("Work") }) { Text("Work") }
+                    LoadingTextButton(onClick = { onSelectPolicyProfile("Home") }) { Text("Home") }
+                    LoadingTextButton(onClick = { onSelectPolicyProfile("Work") }) { Text("Work") }
                 }
                 policies.forEach { Text(it.status.name + " — " + it.title) }
             }
@@ -1976,6 +1978,6 @@ private fun LockScreen(onUnlock: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Text("Security audit data is protected. Authenticate to continue.")
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onUnlock) { Text("Unlock") }
+        LoadingButton(onClick = onUnlock) { Text("Unlock") }
     }
 }
