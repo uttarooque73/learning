@@ -51,7 +51,8 @@ fun LoginScreen(
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLogin: () -> Unit,
-    onCreateAccount: () -> Unit
+    onCreateAccount: () -> Unit,
+    onContinueAsGuest: () -> Unit
 ) {
     var showPassword by remember { mutableStateOf(false) }
     AuthShell("Welcome to NetGuard") {
@@ -61,6 +62,12 @@ fun LoginScreen(
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         LoadingButton(onClick = onLogin, modifier = Modifier.fillMaxWidth(), enabled = email.isNotBlank() && password.isNotBlank()) { Text("Login") }
         LoadingTextButton(onClick = onCreateAccount) { Text("Create account") }
+        LoadingTextButton(onClick = onContinueAsGuest) { Text("Continue without account") }
+        Text(
+            "Core security checks work locally. An account is optional and only needed for profile/account features.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
