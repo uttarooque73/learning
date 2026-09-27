@@ -14,13 +14,13 @@ object ConsumerSecurityEngine {
     fun posture(findings: List<Finding>, mobile: MobileSecuritySnapshot?, network: NetworkInfo?, checkedAtEpochMs: Long): SecurityPosture {
         val recommendations = buildList {
             findings.sortedBy { severityRank(it.severity) }.take(5).forEach { finding ->
-                add(SecurityRecommendation("finding:" + finding.id, finding.title, finding.explanation, finding.remediation, severityRank(finding.severity)))
+                add(SecurityRecommendation("finding:" + finding.id, finding.title, finding.explanation, finding.remediation.joinToString(" "), severityRank(finding.severity)))
             }
             mobile?.checks?.filter { it.status == MobileCheckStatus.FAIL }?.take(3)?.forEach { check ->
-                add(SecurityRecommendation("mobile:" + check.id, check.title, check.evidence, check.remediation, 1))
+                add(SecurityRecommendation("mobile:" + check.id, check.title, check.evidence, check.remediation.joinToString(" "), 1))
             }
             mobile?.checks?.filter { it.status == MobileCheckStatus.REVIEW }?.take(2)?.forEach { check ->
-                add(SecurityRecommendation("mobile-review:" + check.id, "Review: " + check.title, check.evidence, check.remediation, 3))
+                add(SecurityRecommendation("mobile-review:" + check.id, "Review: " + check.title, check.evidence, check.remediation.joinToString(" "), 3))
             }
             if (network == null) add(SecurityRecommendation("network:missing", "Inspect your current network", "NetGuard does not yet have current network evidence.", "Run the network inspection from the Security Check.", 2))
         }.distinctBy { it.id }.sortedBy { it.priority }.take(5)
