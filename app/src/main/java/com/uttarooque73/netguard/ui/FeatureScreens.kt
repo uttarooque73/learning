@@ -66,7 +66,7 @@ fun FindingsFeatureScreen(findings: List<Finding>, onSelect: (Finding) -> Unit) 
                 Text(finding.title, style = MaterialTheme.typography.titleMedium)
                 Text(finding.severity.name + " • " + finding.confidence.name + " • " + finding.ipAddress)
                 Text(finding.evidence)
-                TextButton(onClick = { onSelect(finding) }) { Text("Open") }
+                LoadingTextButton(onClick = { onSelect(finding) }) { Text("Open") }
             }
         }
     }
@@ -85,7 +85,7 @@ fun RemediationFeatureScreen(findings: List<Finding>, records: List<RemediationR
                 Text(finding.remediation)
                 Text("Verification: " + finding.verification, style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
+                    LoadingButton(
                         onClick = { onStart(finding) },
                         enabled = status == RemediationStatus.NOT_STARTED || status == RemediationStatus.CANCELLED
                     ) {
@@ -97,7 +97,7 @@ fun RemediationFeatureScreen(findings: List<Finding>, records: List<RemediationR
                             }
                         )
                     }
-                    Button(
+                    LoadingButton(
                         onClick = { onVerify(finding) },
                         enabled = verifying == null && status != RemediationStatus.NOT_STARTED
                     ) {
@@ -126,7 +126,7 @@ fun WebFeatureScreen(tls: TlsAuditResult?, http: HttpSecurityResult?) = FeatureL
 
 @Composable
 fun PolicyFeatureScreen(results: List<PolicyResult>, profile: String, onProfile: (String) -> Unit) = FeatureListScreen("Security Policies", "Evaluate posture using configurable profiles.") {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = { onProfile("Home") }) { Text("Home") }; TextButton(onClick = { onProfile("Work") }) { Text("Work") } }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { LoadingTextButton(onClick = { onProfile("Home") }) { Text("Home") }; LoadingTextButton(onClick = { onProfile("Work") }) { Text("Work") } }
     Text("Profile: " + profile)
     results.forEach { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text(it.title, style = MaterialTheme.typography.titleMedium); Text(it.status.name); Text(it.description) } } }
 }
