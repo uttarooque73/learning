@@ -656,18 +656,21 @@ class MainActivity : FragmentActivity() {
         if (auditingIp != null) return
         auditingIp = ipAddress
         lifecycleScope.launch {
-            runCatching { ServiceAudit().audit(ipAddress) }
-                .onSuccess { found ->
-                    services = services.filterNot { it.ipAddress == ipAddress } + found
-                    serviceStore.save(services)
-                    val newFindings = found.mapNotNull(ServiceFindingRules::evaluate)
-                    findings = findings.filterNot { it.ipAddress == ipAddress } + newFindings
-                    findingStore.save(findings)
-                    recordTimeline("service", "Service audit", "$ipAddress: ${found.size} reachable services")
-                }
-                .onFailure { discoveryError = it.message ?: "Service audit failed." }
-            auditingIp = null
-        }
+            try {
+                runCatching { ServiceAudit().audit(ipAddress) }
+                    .onSuccess { found ->
+                        services = services.filterNot { it.ipAddress == ipAddress } + found
+                        serviceStore.save(services)
+                        val newFindings = found.mapNotNull(ServiceFindingRules::evaluate)
+                        findings = findings.filterNot { it.ipAddress == ipAddress } + newFindings
+                        findingStore.save(findings)
+                        recordTimeline("service", "Service audit", "${ipAddress}: ${found.size} reachable services")
+                    }
+                    .onFailure { discoveryError = it.message ?: "Service audit failed." }
+            } finally {
+                auditingIp = null
+            }
+        }        }
     }
 
     private fun discoverDevices() {
