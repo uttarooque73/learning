@@ -26,8 +26,6 @@ class AppLockStateMachineTest {
         val blocked = AppLockStateMachine.unlock(session, 2_000L)
         assertEquals(AppLockState.COOLDOWN, blocked.state)
     }
-}
-
     @Test fun cooldownExpiresAtBoundaryAndSuccessfulUnlockResetsSession() {
         var session = AppLockStateMachine.lock()
         repeat(AppLockStateMachine.MAX_FAILED_ATTEMPTS) {
@@ -60,3 +58,4 @@ class AppLockStateMachineTest {
         assertEquals(false, AppLockStateMachine.isCooldownActive(session, session.cooldownUntilEpochMs))
         assertEquals(0L, AppLockStateMachine.remainingCooldownMs(session, session.cooldownUntilEpochMs))
     }
+}
