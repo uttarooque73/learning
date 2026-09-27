@@ -374,7 +374,16 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun recordTimeline(category: String, title: String, detail: String) {
-        timelineEvents = (timelineEvents + SecurityTimelineEvent(java.util.UUID.randomUUID().toString(), category, title, detail, System.currentTimeMillis())).takeLast(200)
+        val now = System.currentTimeMillis()
+        val duplicateWindowMs = 60_000L
+        val duplicate = timelineEvents.lastOrNull()?.let {
+            it.category == category &&
+                it.title == title &&
+                it.detail == detail &&
+                now - it.timestamp <= duplicateWindowMs
+        } == true
+        if (duplicate) return
+        timelineEvents = (timelineEvents + SecurityTimelineEvent(java.util.UUID.randomUUID().toString(), category, title, detail, now)).takeLast(200)
         timelineStore.save(timelineEvents)
     }
 
