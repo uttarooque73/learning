@@ -1497,7 +1497,7 @@ private fun Dashboard(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         when (selectedScreen) {
-            Screen.Profile, Screen.Contacts, Screen.CallProtection -> Unit
+            Screen.SecurityCenter, Screen.AdTrackerGuard, Screen.Profile, Screen.Contacts, Screen.CallProtection -> Unit
             Screen.Dashboard -> {
                 val critical = findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.CRITICAL }
                 val high = findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.HIGH }
