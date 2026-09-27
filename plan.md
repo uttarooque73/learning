@@ -366,7 +366,7 @@ Status legend:
 | Feature | Status | Completed | Pending |
 |---|---|---|---|
 | 1. Android Device Security Audit | **Completed — MVP** | Android version/patch, screen lock, encryption posture, debuggable signal, evidence/remediation/verification | Broader physical-device validation |
-| 2. Installed Application Security Audit | **Completed — MVP** | App inventory, debuggable/backup/cleartext/exported-component checks, selected permission checks | More Android-version coverage and observable sideloading indicators |
+| 2. Installed Application Security Audit | **Completed — expanded MVP** | App inventory, debuggable/backup/cleartext/exported-component checks, selected permission checks, installer provenance, version and target-SDK evidence | Broader permission taxonomy and deeper component-level analysis |
 | 3. DNS Security Audit | **Completed — MVP** | DNS servers, Private DNS posture, gateway/DNS evidence and change tracking | Stronger encrypted-DNS transport evidence where Android exposes it |
 | 4. Gateway Security Audit | **Completed — MVP** | Gateway identity/change detection and service exposure checks | More gateway-management protocol coverage |
 | 5. TLS/HTTPS Security Analyzer | **Completed — MVP** | HTTPS reachability, certificate subject/issuer/expiry, hostname verification, safe redirect inspection | Stronger TLS protocol/cipher evidence where Android APIs permit it |
