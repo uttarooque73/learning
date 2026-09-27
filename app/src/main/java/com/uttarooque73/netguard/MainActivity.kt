@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.CallLog
 import android.content.Intent
 import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
@@ -205,6 +206,8 @@ class MainActivity : FragmentActivity() {
     private var deviceContacts by mutableStateOf<List<SavedContact>>(emptyList())
     private var contactError by mutableStateOf<String?>(null)
     private var contactPermissionRequested = false
+    private var callLogPermissionRequested = false
+    private var callLogError by mutableStateOf<String?>(null)
     private var authenticated by mutableStateOf(false)
     private var showSignUp by mutableStateOf(false)
     private var authEmail by mutableStateOf("")
@@ -218,6 +221,9 @@ class MainActivity : FragmentActivity() {
     private val profileImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri -> selectedProfileImage = uri }
     private val contactsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) loadDeviceContacts() else contactError = "Contacts permission is required to choose numbers from your contact list."
+    }
+    private val callLogPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) loadCallLogHistory() else callLogError = "Call log permission is required to display recent system call history."
     }
     private var appLocked by mutableStateOf(false)
     private var authenticating = false
@@ -299,7 +305,7 @@ class MainActivity : FragmentActivity() {
                 onStartAudit = ::requestNetworkPermissionAndInspect,
                 discoveryError = discoveryError,
                 selectedScreen = selectedScreen,
-                onSelectScreen = { screen -> if (screen == Screen.Contacts) openContactNumbers() else selectedScreen = screen },
+                onSelectScreen = { screen -> when (screen) { Screen.Contacts -> openContactNumbers(); Screen.CallProtection -> openCallProtection(); else -> selectedScreen = screen } },
                 onDiscoverDevices = ::discoverDevices,
                 services = services,
                 auditingIp = auditingIp,
@@ -366,6 +372,9 @@ class MainActivity : FragmentActivity() {
                 onUnblockNumber = ::unblockNumber,
                 onClearCallLogs = { callProtectionStore.clearLogs(); refreshCallProtection() },
                 onEnableCallScreening = { requestCallScreeningRole(this) },
+                callLogError = callLogError,
+                onRequestCallLogPermission = { openCallProtection() },
+                callLogPermissionGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED,
                 callScreeningEnabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&
                     getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true,
                 onObserveWifiTrust = ::observeWifiTrust
@@ -606,6 +615,54 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun refreshCallProtection() { callProtectionLogs = callProtectionStore.logs(); blockedNumbers = callProtectionStore.blockedNumbers() }
+
+    private fun loadCallLogHistory() {
+        runCatching {
+            val logs = mutableListOf<com.uttarooque73.netguard.security.CallProtectionLog>()
+            contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE),
+                null, null, "${CallLog.Calls.DATE} DESC LIMIT 100"
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(CallLog.Calls._ID)
+                val numberIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+                val typeIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
+                val dateIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)
+                while (cursor.moveToNext()) {
+                    val number = cursor.getString(numberIndex).orEmpty()
+                    val type = cursor.getInt(typeIndex)
+                    val direction = when (type) {
+                        CallLog.Calls.INCOMING_TYPE -> "Incoming"
+                        CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
+                        CallLog.Calls.MISSED_TYPE -> "Missed"
+                        CallLog.Calls.REJECTED_TYPE -> "Rejected"
+                        else -> "Other"
+                    }
+                    val blocked = number.isNotBlank() && callProtectionStore.isBlocked(number)
+                    logs += com.uttarooque73.netguard.security.CallProtectionLog(
+                        id = "system-${cursor.getString(idIndex)}",
+                        number = number.ifBlank { "Unknown number" },
+                        contactName = userContactStore.findSavedByNumber(number)?.name,
+                        direction = direction,
+                        blocked = blocked,
+                        timestamp = cursor.getLong(dateIndex)
+                    )
+                }
+            }
+            callProtectionLogs = logs
+            callLogError = null
+        }.onFailure { callLogError = it.message ?: "Unable to read system call history." }
+    }
+
+    private fun openCallProtection() {
+        selectedScreen = Screen.CallProtection
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
+            loadCallLogHistory()
+        } else if (!callLogPermissionRequested) {
+            callLogPermissionRequested = true
+            callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+        }
+    }
 
     private fun blockNumber(number: String) { callProtectionStore.block(number); refreshCallProtection() }
     private fun unblockNumber(number: String) { callProtectionStore.unblock(number); refreshCallProtection() }
