@@ -31,7 +31,7 @@ data class TrustedSecurityBaselineSnapshot(
 object SecurityDriftEngine {
     fun snapshot(network: NetworkInfo?, devices: List<DiscoveredDevice>, services: List<DiscoveredService>, apps: List<AppSecurityCheck>, now: Long): TrustedSecurityBaselineSnapshot =
         TrustedSecurityBaselineSnapshot(
-            now, network?.ssid, network?.bssid, network?.gatewayAddress, network?.dnsServers.sorted(), network?.wifiSecurity,
+            now, network?.ssid, network?.bssid, network?.gatewayAddress, network?.dnsServers.orEmpty().sorted(), network?.wifiSecurity,
             devices.map { it.ipAddress }.sorted(),
             services.map { it.ipAddress + "|" + it.protocol + "|" + it.port }.sorted(),
             apps.map { it.packageName + "|" + (it.versionCode ?: 0L) }.sorted(),
