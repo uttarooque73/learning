@@ -1200,6 +1200,7 @@ private fun Dashboard(
                 }
             }
             Screen.CommandCenter -> SecurityCommandCenterScreen(networkInfo, devices, services, findings, monitorEvents, wifiTrustResult, onExportInvestigation, onRunCommandCenterProfile)
+            Screen.Contacts -> ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
