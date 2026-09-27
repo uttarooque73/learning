@@ -559,3 +559,14 @@ For every feature:
 - Allows selecting individual numbers and stores only selected name/number entries locally.
 - Prevents duplicate saved numbers and supports removal.
 - No contact data is uploaded or synchronized to a remote service.
+
+
+## Call Protection — Implemented
+
+- Added local Call Protection screen with recent call screening logs.
+- Added per-number Block / Unblock controls.
+- Added bounded local history (200 screening events).
+- Added Android CallScreeningService integration.
+- Added explicit system Call Screening role request; NetGuard does not silently enable call blocking.
+- Blocked calls are rejected by the Android Telecom framework when NetGuard is the selected call-screening app.
+- Call protection data remains local; saved contact identity is resolved from NetGuard's selected contacts.
