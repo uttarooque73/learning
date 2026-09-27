@@ -21,6 +21,14 @@ class MobileSecurityAuditTest {
     }
 
     @Test
+    fun mobileAuditHasExpectedPostureCoverage() {
+        val ids = MobileSecurityAudit.checkIds()
+        assertTrue(ids.contains("MOB-NET-001"))
+        assertTrue(ids.contains("MOB-DNS-001"))
+        assertTrue(ids.contains("MOB-LIMIT-001"))
+    }
+
+    @Test
     fun deviceSecurityCheckIdsAreStable() {
         val ids = MobileSecurityAudit.checkIds()
         assertTrue(ids.contains("MOB-DEV-005"))
