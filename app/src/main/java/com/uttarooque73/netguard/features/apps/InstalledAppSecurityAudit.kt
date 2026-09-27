@@ -78,7 +78,7 @@ object InstalledAppSecurityAudit {
             val versionName = pkg.versionName
             val versionCode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode else @Suppress("DEPRECATION") pkg.versionCode.toLong()
             val targetSdk = appInfo.targetSdkVersion
-            val requested = classifyDangerousPermissions(pkg.requestedPermissions.orEmpty())
+            val requested = classifyDangerousPermissions(pkg.requestedPermissions.orEmpty().toList())
 
             val evidence = buildList {
                 if (debuggable) add("Application is marked debuggable.")
