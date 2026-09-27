@@ -543,6 +543,7 @@ class MainActivity : FragmentActivity() {
 
     private fun performFullSecurityCheck() {
         lifecycleScope.launch {
+            val previousFindings = findings
             try {
                 mobileSecurity = runCatching { MobileSecurityAudit.inspect(this@MainActivity) }.getOrNull()
                 val info = networkInfo
@@ -558,6 +559,18 @@ class MainActivity : FragmentActivity() {
                         serviceStore.save(services)
                         findings = audited.mapNotNull(ServiceFindingRules::evaluate)
                         findingStore.save(findings)
+                        val completed = remediationRecords.filter { it.status == RemediationStatus.COMPLETED }
+                        completed.forEach { record ->
+                            previousFindings.firstOrNull { it.id == record.findingId && it.ipAddress == record.ipAddress }?.let { previous ->
+                                val result = runCatching { VerificationEngine().verify(previous, true) }.getOrNull()
+                                if (result != null) {
+                                    verificationResults = verificationResults.filterNot {
+                                        it.findingId == result.findingId && it.ipAddress == result.ipAddress
+                                    } + result
+                                }
+                            }
+                        }
+                        verificationStore.save(verificationResults)
                     }
                     dnsGatewayResult = runCatching { DnsGatewayAudit.inspect(this@MainActivity) }.getOrNull()
                     val currentWifi = WifiObservation(info.ssid, info.bssid, info.gatewayAddress, info.wifiSecurity)
