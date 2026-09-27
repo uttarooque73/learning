@@ -347,6 +347,7 @@ class MainActivity : FragmentActivity() {
                 customPolicyEvaluations = customPolicyEvaluations,
                 onRunCommandCenterProfile = ::runCommandCenterProfile,
                 onExportInvestigation = ::exportInvestigationPackage,
+                authError = authError,
                 userProfile = userProfile,
                 profileName = profileName,
                 selectedProfileImage = selectedProfileImage,
@@ -998,6 +999,7 @@ fun NetGuardApp(
     customPolicyEvaluations: List<CustomPolicyEvaluation>,
     onRunCommandCenterProfile: (AuditProfile) -> Unit,
     onExportInvestigation: () -> Unit,
+    authError: String?,
     userProfile: UserProfile?,
     profileName: String,
     selectedProfileImage: android.net.Uri?,
@@ -1088,7 +1090,10 @@ fun NetGuardApp(
                 dnsSecurity = dnsSecurity,
                 vulnerabilityCandidates = vulnerabilityCandidates,
                 riskTrend = riskTrend,
-                customPolicyEvaluations = customPolicyEvaluations
+                customPolicyEvaluations = customPolicyEvaluations,
+                onRunCommandCenterProfile = onRunCommandCenterProfile,
+                onExportInvestigation = onExportInvestigation,
+                onObserveWifiTrust = { observeWifiTrust() }
             )
         }
     }
@@ -1149,7 +1154,10 @@ private fun Dashboard(
     dnsSecurity: DnsSecurityResult?,
     vulnerabilityCandidates: List<VulnerabilityCandidate>,
     riskTrend: List<RiskTrendPoint>,
-    customPolicyEvaluations: List<CustomPolicyEvaluation>
+    customPolicyEvaluations: List<CustomPolicyEvaluation>,
+    onRunCommandCenterProfile: (AuditProfile) -> Unit,
+    onExportInvestigation: () -> Unit,
+    onObserveWifiTrust: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -1166,6 +1174,9 @@ private fun Dashboard(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         when (selectedScreen) {
+            Screen.Profile -> Unit
+            Screen.Contacts -> ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
+            Screen.CallProtection -> CallProtectionScreen(callProtectionLogs, blockedNumbers, ::blockNumber, ::unblockNumber, { callProtectionStore.clearLogs(); refreshCallProtection() }, { requestCallScreeningRole(this@MainActivity) }, android.app.role.RoleManager::class.java.let { getSystemService(it)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true })
             Screen.Dashboard -> {
                 Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
                 Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
@@ -1214,9 +1225,7 @@ private fun Dashboard(
                 }
             }
             Screen.CommandCenter -> SecurityCommandCenterScreen(networkInfo, devices, services, findings, monitorEvents, wifiTrustResult, onExportInvestigation, onRunCommandCenterProfile)
-            Screen.Contacts -> ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
-            Screen.CallProtection -> CallProtectionScreen(callProtectionLogs, blockedNumbers, ::blockNumber, ::unblockNumber, { callProtectionStore.clearLogs(); refreshCallProtection() }, { requestCallScreeningRole(this) }, android.app.role.RoleManager::class.java.let { getSystemService(it)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true })
-            Screen.Network -> NetworkScreen(networkInfo)
+                        Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
             Screen.Intelligence -> IntelligenceScreen(devices, services, topology, dnsSecurity, vulnerabilityCandidates, riskTrend)
@@ -1239,7 +1248,7 @@ private fun Dashboard(
             Screen.Monitoring -> FeatureListScreen("Monitoring", "Local inventory change monitoring.") { MonitoringSection(monitoring, monitorEvents, onCheckChanges) }
             Screen.Baseline -> FeatureListScreen("Baseline", "Evidence-backed local security baseline evaluation.") { BaselineSection(baselineResults, onEvaluateBaseline) }
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
-            Screen.Wifi -> WifiTrustPage(wifiTrustResult, ::observeWifiTrust)
+            Screen.Wifi -> WifiTrustPage(wifiTrustResult, onObserveWifiTrust)
             Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
             Screen.Policies -> PolicyFeatureScreen(policyResults, selectedPolicyProfile, onSelectPolicyProfile)
             Screen.Timeline -> TimelineFeatureScreen(timelineEvents)
