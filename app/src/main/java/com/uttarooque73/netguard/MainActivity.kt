@@ -1275,7 +1275,16 @@ private fun ReportSection(
             Button(onClick = onImportAuditPackage) { Text("Import audit package") }
             Text("Saved audits: " + history.size)
             history.takeLast(5).reversed().forEach { entry ->
-                Text(entry.id + " — devices " + entry.deviceCount + ", services " + entry.serviceCount + ", findings " + entry.findingCount)
+                val created = java.text.SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss",
+                    java.util.Locale.US
+                ).format(java.util.Date(entry.createdAtEpochMs))
+                Text(
+                    created + " — devices " + entry.deviceCount +
+                        ", services " + entry.serviceCount +
+                        ", findings " + entry.findingCount
+                )
+                Text("Audit ID: " + entry.id, style = MaterialTheme.typography.bodySmall)
             }
             latestReport?.let { report ->
                 Text("Latest report", style = MaterialTheme.typography.titleSmall)
