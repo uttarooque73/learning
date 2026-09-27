@@ -20,6 +20,7 @@ object MonitorEngine {
 
     fun compareDevices(previous: List<DiscoveredDevice>, current: List<DiscoveredDevice>): List<MonitorEvent> {
         val oldIps = previous.map { it.ipAddress }.toSet()
+        val previousByIp = previous.associateBy { it.ipAddress }
         return current.filter { it.ipAddress !in oldIps }.map {
             MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.NEW_DEVICE, it.ipAddress, "New device discovered: ${it.hostname ?: "unknown hostname"}")
         }
@@ -28,8 +29,14 @@ object MonitorEngine {
     fun compareServices(previous: List<DiscoveredService>, current: List<DiscoveredService>): List<MonitorEvent> {
         val oldServices = previous.map { key(it) }.toSet()
         val currentServices = current.map { key(it) }.toSet()
+        val previousByKey = previous.associateBy { key(it) }
         val added = current.filter { key(it) !in oldServices }.map {
             MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.NEW_SERVICE, it.ipAddress, "New reachable service: TCP/${it.port} ${it.serviceName}")
+        }
+        val changed = current.mapNotNull { service ->
+            val old = previousByKey[key(service)] ?: return@mapNotNull null
+            if (old.serviceName == service.serviceName && old.reachable == service.reachable) return@mapNotNull null
+            MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.SERVICE_CHANGED, service.ipAddress, "Service metadata changed")
         }
         val removed = previous.filter { key(it) !in currentServices }.map {
             MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.SERVICE_REMOVED, it.ipAddress, "Previously observed service is no longer reachable: TCP/${it.port} ${it.serviceName}")
