@@ -6,12 +6,14 @@
 - Keep remediation guided; the app does not directly modify remote devices.
 - Do not collect credentials or authentication secrets.
 - Monitoring is user-configurable and uses bounded WorkManager scheduling when enabled; it does not perform unrestricted continuous background scanning.
+- Scheduled monitoring requires a network connection and is bounded to a 1–168 hour interval.
+- Legacy monitoring scheduling is routed through the same bounded, user-configured scheduler.
 
 ## Privacy
-Current MVP data is local-first. Stored categories include network inventory, service reachability, findings, remediation state, verification results, audit history, monitoring events, and administrative metadata.
+Current MVP data is local-first. Stored categories include network inventory, service reachability, findings, remediation state, verification results, audit history, monitoring events, baseline configuration/evaluation, network profiles, asset metadata, administrative metadata, custom security policies/evaluations, security timeline events, and audit report snapshots.
 
 ## Performance
-Discovery and service auditing already use bounded concurrency and short connection timeouts. Future background monitoring must use explicit scheduling and battery-aware Android APIs.
+Discovery and service auditing already use bounded concurrency and short connection timeouts. Background monitoring uses explicit WorkManager scheduling, a required network constraint, bounded intervals, and bounded event history.
 
 ## Release checklist
 - Review runtime permissions on each supported Android release.
