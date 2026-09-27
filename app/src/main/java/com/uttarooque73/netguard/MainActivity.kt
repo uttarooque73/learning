@@ -1272,11 +1272,25 @@ private fun BaselineSection(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Security baseline", style = MaterialTheme.typography.titleMedium)
-            Text("Evidence-backed checks for the selected local baseline.")
+            Text("Selected local baseline: Secure Home Network")
+            Text("Results are based on currently audited reachable services.")
             Button(onClick = onEvaluate) { Text("Evaluate baseline") }
+
+            if (results.isNotEmpty()) {
+                val passCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.PASS }
+                val reviewCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.REVIEW }
+                val failCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.FAIL }
+                Text("Summary: $passCount PASS • $reviewCount REVIEW • $failCount FAIL")
+            } else {
+                Text("No baseline evaluation has been run yet.")
+            }
+
             results.forEach { result ->
                 Text(result.status.name + " — " + result.title)
                 Text(result.evidence)
+                if (result.status == com.uttarooque73.netguard.compliance.BaselineStatus.REVIEW) {
+                    Text("REVIEW means the available evidence is insufficient to establish compliance; it is not a confirmed security failure.")
+                }
             }
         }
     }
