@@ -1928,6 +1928,7 @@ private fun AdvancedSecuritySection(
     var customDescription by remember { mutableStateOf("") }
     var customRuleType by remember { mutableStateOf(CustomPolicyRuleType.INFORMATIONAL) }
     var customPort by remember { mutableStateOf("") }
+    var customPolicyError by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 32.dp),
@@ -2002,16 +2003,33 @@ private fun AdvancedSecuritySection(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                LoadingButton(onClick = {
-                    runCatching {
+                customPolicyError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                LoadingButton(
+                    enabled = customId.trim().isNotBlank() &&
+                        customTitle.trim().isNotBlank() &&
+                        (customRuleType != CustomPolicyRuleType.BLOCK_PORT || (customPort.toIntOrNull() in 1..65535)),
+                    onClick = {
+                        val id = customId.trim()
+                        val title = customTitle.trim()
+                        val port = if (customRuleType == CustomPolicyRuleType.BLOCK_PORT) customPort.toIntOrNull() else null
+                        if (id.isBlank() || title.isBlank()) {
+                            customPolicyError = "Policy ID and title are required."
+                            return@LoadingButton
+                        }
+                        if (customRuleType == CustomPolicyRuleType.BLOCK_PORT && port !in 1..65535) {
+                            customPolicyError = "Port must be between 1 and 65535."
+                            return@LoadingButton
+                        }
+                        customPolicyError = null
                         CustomPolicy(
-                            id = customId.trim(),
-                            title = customTitle.trim(),
+                            id = id,
+                            title = title,
                             description = customDescription.trim(),
                             ruleType = customRuleType,
-                            port = if (customRuleType == CustomPolicyRuleType.BLOCK_PORT) customPort.toIntOrNull() else null
+                            port = port
                         ).also(customStore::upsert)
-                    }.onSuccess {
                         customPolicies = customStore.load()
                         customId = ""
                         customTitle = ""
@@ -2019,7 +2037,7 @@ private fun AdvancedSecuritySection(
                         customPort = ""
                         customRuleType = CustomPolicyRuleType.INFORMATIONAL
                     }
-                }) { Text("Save policy") }
+                ) { Text("Save policy") }
                 customPolicyEvaluations.forEach { evaluation ->
                     Text(evaluation.policy.id + " — " + if (evaluation.passed) "PASS" else "FAIL")
                     Text(evaluation.evidence)
