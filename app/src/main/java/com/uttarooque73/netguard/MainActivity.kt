@@ -1180,6 +1180,7 @@ private fun Dashboard(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         when (selectedScreen) {
+            Screen.Profile, Screen.Contacts, Screen.CallProtection -> Unit
             Screen.Dashboard -> {
                 Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
                 Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
