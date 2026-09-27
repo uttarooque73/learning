@@ -45,6 +45,7 @@ fun SecurityCenterScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Text("Security Center",style=MaterialTheme.typography.headlineMedium)
         Text("Continuous security, privacy, network and investigation controls.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+        SecurityAutopilotCard(network, services, apps, mobile, drifts, onRunCheck)
 
         Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("1. Security Watchdog",style=MaterialTheme.typography.titleMedium)
