@@ -479,18 +479,29 @@ Status legend:
 
 ### Phase 13 — Security Command Center
 
-**Status: Planned**
+**Status: Implemented — MVP**
 
 | Feature | Status | Scope |
 |---|---|---|
-| Attack Surface Map | **Planned** | Device/service/finding relationship visualization |
-| Exposure Diff | **Planned** | Snapshot-to-snapshot security change analysis |
-| Asset Security Profiles | **Planned** | Persistent per-asset evidence and history |
-| Evidence Explorer | **Planned** | Evidence-first finding investigation |
-| Investigation Timeline | **Planned** | Correlated security event investigation |
-| Safe Audit Profiles | **Planned** | Quick, Standard, and Deep authorized audit modes |
-| Security Score Explainability | **Planned** | Traceable score contributions and change explanation |
-| Local Investigation Packages | **Planned** | Bounded, versioned investigation export/import |
+| Security Detective | **Completed — MVP** | Evidence-backed investigation summary using current devices, services, findings and monitoring changes |
+| What Changed? | **Completed — MVP** | Recent monitoring-event investigation view |
+| Security Graph | **Completed — MVP** | Network → asset → service → finding relationship view |
+| Exposure Diff | **Completed — MVP** | Change evidence surfaced from the existing monitoring event stream |
+| Asset Security Profiles | **Completed — MVP** | Per-asset services, findings and hostname/reachability context |
+| Evidence Explorer | **Completed — MVP** | Finding evidence, severity, confidence, remediation and verification context |
+| Investigation Timeline | **Completed — MVP** | Recent change events grouped as investigation evidence |
+| Safe Audit Profiles | **Completed — MVP** | Quick, Standard and Deep scope definitions with explicit defensive boundary |
+| Security Score Explainability | **Completed — MVP** | Finding-level score deductions tied to severity and asset |
+| Security Experiments | **Completed — MVP** | Safe HTTP/Telnet/SMB/Wi-Fi evidence checks using existing authorized observations only |
+| Evidence Analyst | **Completed — MVP** | Offline deterministic questions answered only from stored NetGuard evidence |
+| Local Investigation Packages | **Completed — MVP** | Reuses bounded versioned audit-package export for local investigation evidence |
+
+Phase 13 implementation notes:
+- Command Center analysis is local-first and does not require a cloud service or LLM.
+- Security Experiments never perform credential attacks, exploitation, brute force, stealth, or access-control bypass.
+- Evidence Analyst responses are deterministic and limited to stored observations.
+- Investigation package export uses the existing bounded audit-package format.
+- Audit profile selection currently documents scope; deeper profile-specific discovery orchestration remains a future enhancement.
 
 ### Current implementation backlog
 
