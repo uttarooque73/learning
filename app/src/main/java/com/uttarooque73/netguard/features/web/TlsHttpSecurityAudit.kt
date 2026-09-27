@@ -13,6 +13,8 @@ data class TlsAuditResult(
     val certificateIssuer: String?,
     val expiresAtEpochMs: Long?,
     val hostnameVerified: Boolean?,
+    val certificateExpired: Boolean? = null,
+    val daysUntilExpiry: Long? = null,
     val evidence: List<String>,
     val remediation: List<String>
 )
@@ -40,8 +42,13 @@ object TlsHttpSecurityAudit {
             connection.requestMethod = "GET"
             connection.connect()
             val cert = connection.serverCertificates.firstOrNull() as? java.security.cert.X509Certificate
+            val now = System.currentTimeMillis()
+            val daysUntilExpiry = cert?.let { ((it.notAfter.time - now) / 86_400_000L) }
+            val certificateExpired = cert?.let { it.notAfter.time <= now }
             val evidence = buildList {
                 add("HTTPS endpoint reachable.")
+                certificateExpired?.let { add(if (it) "Certificate is expired." else "Certificate is currently within its validity period.") }
+                daysUntilExpiry?.let { add("Certificate expires in approximately $it day(s).") }
                 add("Negotiated cipher suite: " + connection.cipherSuite)
                 add("TLS protocol: not exposed by Android HttpsURLConnection; verify server TLS configuration separately.")
                 cert?.let {
@@ -59,6 +66,8 @@ object TlsHttpSecurityAudit {
                 certificateIssuer = cert?.issuerX500Principal?.name,
                 expiresAtEpochMs = cert?.notAfter?.time,
                 hostnameVerified = true,
+                certificateExpired = certificateExpired,
+                daysUntilExpiry = daysUntilExpiry,
                 evidence = evidence,
                 remediation = listOf(
                     "Use a certificate issued for the requested hostname.",
