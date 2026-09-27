@@ -1016,7 +1016,7 @@ fun NetGuardApp(
                     Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
                     HorizontalDivider()
                     val screens = listOf(
-                        Screen.Dashboard, Screen.Profile, Screen.Contacts, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
+                        Screen.Dashboard, Screen.Profile, Screen.Contacts, Screen.CallProtection, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
                         Screen.Findings, Screen.Remediation, Screen.Monitoring, Screen.Baseline,
                         Screen.Mobile, Screen.Wifi, Screen.Web, Screen.Policies, Screen.Timeline,
                         Screen.Reports, Screen.Administration, Screen.Learning, Screen.Advanced
