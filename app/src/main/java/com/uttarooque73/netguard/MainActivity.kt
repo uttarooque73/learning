@@ -598,18 +598,24 @@ class MainActivity : FragmentActivity() {
         if (monitoring) return
         monitoring = true
         lifecycleScope.launch {
+            val baselineInitialized = monitorBaselineStore.isInitialized()
             val previousDeviceIps = monitorBaselineStore.loadDeviceIps()
             val previousDevices = previousDeviceIps.map { DiscoveredDevice(it, reachable = true) }
             val previousServices = monitorBaselineStore.loadServices()
             val previousNetwork = monitorBaselineStore.loadNetwork()
             val currentNetwork = networkInfo
 
-            val inventoryEvents = MonitorRunner.check(previousDevices, devices, previousServices, services)
-            val networkEvents = currentNetwork?.let { MonitorEngine.compareNetwork(previousNetwork, it) }.orEmpty()
-            val events = networkEvents + inventoryEvents
+            if (baselineInitialized) {
+                val inventoryEvents = MonitorRunner.check(previousDevices, devices, previousServices, services)
+                val networkEvents = currentNetwork?.let { MonitorEngine.compareNetwork(previousNetwork, it) }.orEmpty()
+                val events = networkEvents + inventoryEvents
+                monitorEvents = (monitorEvents + events).takeLast(100)
+                monitorStore.save(monitorEvents)
+            } else {
+                monitorEvents = emptyList()
+                monitorStore.save(emptyList())
+            }
 
-            monitorEvents = (monitorEvents + events).takeLast(100)
-            monitorStore.save(monitorEvents)
             monitorBaselineStore.saveDevices(devices)
             monitorBaselineStore.saveServices(services)
             currentNetwork?.let(monitorBaselineStore::saveNetwork)
