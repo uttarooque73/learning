@@ -354,7 +354,20 @@ class MainActivity : FragmentActivity() {
                 onProfileNameChange = { profileName = it },
                 onSelectProfileImage = { profileImageLauncher.launch("image/*") },
                 onSaveProfile = ::saveUserProfile,
-                onLogout = ::logoutUser
+                onLogout = ::logoutUser,
+                savedContacts = savedContacts,
+                deviceContacts = deviceContacts,
+                contactError = contactError,
+                onAddContact = ::addContact,
+                onRemoveContact = ::removeContact,
+                callProtectionLogs = callProtectionLogs,
+                blockedNumbers = blockedNumbers,
+                onBlockNumber = ::blockNumber,
+                onUnblockNumber = ::unblockNumber,
+                onClearCallLogs = { callProtectionStore.clearLogs(); refreshCallProtection() },
+                onEnableCallScreening = { requestCallScreeningRole(this) },
+                callScreeningEnabled = getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true,
+                onObserveWifiTrust = ::observeWifiTrust
                 )
             }
         }
@@ -1006,7 +1019,20 @@ fun NetGuardApp(
     onProfileNameChange: (String) -> Unit,
     onSelectProfileImage: () -> Unit,
     onSaveProfile: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    savedContacts: List<SavedContact>,
+    deviceContacts: List<SavedContact>,
+    contactError: String?,
+    onAddContact: (SavedContact) -> Unit,
+    onRemoveContact: (String) -> Unit,
+    callProtectionLogs: List<com.uttarooque73.netguard.security.CallProtectionLog>,
+    blockedNumbers: Set<String>,
+    onBlockNumber: (String) -> Unit,
+    onUnblockNumber: (String) -> Unit,
+    onClearCallLogs: () -> Unit,
+    onEnableCallScreening: () -> Unit,
+    callScreeningEnabled: Boolean,
+    onObserveWifiTrust: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1038,11 +1064,11 @@ fun NetGuardApp(
             if (selectedScreen == Screen.Profile && userProfile != null) {
                 ProfileScreen(userProfile!!, profileName, selectedProfileImage, authError, onProfileNameChange, onSelectProfileImage, onSaveProfile, onLogout)
             } else if (selectedScreen == Screen.Contacts) {
-                ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
+                ContactNumbersScreen(savedContacts, deviceContacts, contactError, onAddContact, onRemoveContact)
             } else if (selectedScreen == Screen.CallProtection) {
                 val roleManager = getSystemService(android.app.role.RoleManager::class.java)
                 val screeningEnabled = roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true
-                CallProtectionScreen(callProtectionLogs, blockedNumbers, ::blockNumber, ::unblockNumber, { callProtectionStore.clearLogs(); refreshCallProtection() }, { requestCallScreeningRole(this@MainActivity) }, screeningEnabled)
+                CallProtectionScreen(callProtectionLogs, blockedNumbers, onBlockNumber, onUnblockNumber, onClearCallLogs, onEnableCallScreening, callScreeningEnabled)
             } else Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
@@ -1099,7 +1125,7 @@ fun NetGuardApp(
                 customPolicyEvaluations = customPolicyEvaluations,
                 onRunCommandCenterProfile = onRunCommandCenterProfile,
                 onExportInvestigation = onExportInvestigation,
-                onObserveWifiTrust = { observeWifiTrust() }
+                onObserveWifiTrust = onObserveWifiTrust
             )
         }
     }
