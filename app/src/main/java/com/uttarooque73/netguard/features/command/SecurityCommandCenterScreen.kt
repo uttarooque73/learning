@@ -29,6 +29,8 @@ import com.uttarooque73.netguard.monitor.MonitorEvent
 import com.uttarooque73.netguard.network.DiscoveredDevice
 import com.uttarooque73.netguard.network.NetworkInfo
 import com.uttarooque73.netguard.features.wifi.WifiTrustResult
+import com.uttarooque73.netguard.ui.LoadingButton
+import com.uttarooque73.netguard.ui.LoadingTextButton
 
 @Composable
 fun SecurityCommandCenterScreen(
@@ -137,7 +139,7 @@ fun SecurityCommandCenterScreen(
                 }
                 Text(profile.description)
                 Text(AuditProfilePlanner.plan(profile).resourceWarning)
-                Button(onClick = { onRunProfile(profile) }) { Text("Run ${profile.label}") }
+                LoadingButton(onClick = { onRunProfile(profile) }) { Text("Run ${profile.label}") }
                 Text("Scope only. No exploitation, brute force, stealth, credential attacks, or access-control bypass.")
             }
         }
@@ -149,11 +151,7 @@ fun SecurityCommandCenterScreen(
                 CommandCenterEngine.experiments.forEach { experiment ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(experiment.title, modifier = Modifier.weight(1f))
-                        OutlinedButton(onClick = {
-                            experimentResult = CommandCenterEngine.experiment(
-                                experiment, services, network, wifiTrust?.status?.toString()
-                            )
-                        }) { Text("Run") }
+                        LoadingTextButton(onClick = { experimentResult = CommandCenterEngine.experiment(experiment, services, network, wifiTrust?.status?.toString()) }) { Text("Run") }
                     }
                 }
                 experimentResult?.let {
@@ -227,7 +225,7 @@ fun SecurityCommandCenterScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Local Investigation Package", style = MaterialTheme.typography.titleMedium)
                 Text("Exports selected recent snapshots, snapshot diff, and timeline evidence as a bounded investigation bundle.")
-                Button(onClick = onExportInvestigation) { Text("Export investigation package") }
+                LoadingButton(onClick = onExportInvestigation) { Text("Export investigation package") }
                 Text("Stored snapshots: " + history.size)
             }
         }
@@ -238,22 +236,27 @@ fun SecurityCommandCenterScreen(
                 Text("Optional local-model analysis. Evidence is supplied as context; the model is instructed not to invent facts.")
                 OutlinedTextField(value = ollamaEndpoint, onValueChange = { ollamaEndpoint = it }, label = { Text("Ollama endpoint") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = ollamaModel, onValueChange = { ollamaModel = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth())
-                Button(
-                    enabled = !ollamaRunning && question.isNotBlank(),
+                LoadingButton(
+                    enabled = !ollamaRunning && question.isNotBlank() && ollamaEndpoint.isNotBlank() && ollamaModel.isNotBlank(),
                     onClick = {
                         ollamaRunning = true
                         scope.launch {
-                            val contextText = LocalEvidenceAnalyst.buildContext(network, devices, services, findings)
-                            val result = LocalOllamaClient.generate(
-                                ollamaEndpoint,
-                                ollamaModel,
-                                LocalEvidenceAnalyst.prompt(question, contextText)
-                            )
-                            ollamaAnswer = result.text
-                            ollamaRunning = false
+                            try {
+                                val contextText = LocalEvidenceAnalyst.buildContext(network, devices, services, findings)
+                                val result = LocalOllamaClient.generate(
+                                    ollamaEndpoint.trim(),
+                                    ollamaModel.trim(),
+                                    LocalEvidenceAnalyst.prompt(question.trim(), contextText)
+                                )
+                                ollamaAnswer = result.text
+                            } catch (error: Exception) {
+                                ollamaAnswer = "Local model request failed: " + (error.message ?: "unknown error")
+                            } finally {
+                                ollamaRunning = false
+                            }
                         }
                     }
-                ) { Text(if (ollamaRunning) "Analyzing..." else "Ask local model") }
+                ) { Text("Ask local model") }
                 ollamaAnswer?.let { Text(it) }
             }
         }
@@ -268,9 +271,12 @@ fun SecurityCommandCenterScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Ask about score, changes, devices, services or findings") }
                 )
-                Button(onClick = {
-                    answer = CommandCenterEngine.answer(question, network, devices, services, findings, monitorEvents)
-                }, enabled = question.isNotBlank()) { Text("Analyze") }
+                LoadingButton(
+                    onClick = {
+                        answer = CommandCenterEngine.answer(question.trim(), network, devices, services, findings, monitorEvents)
+                    },
+                    enabled = question.isNotBlank()
+                ) { Text("Analyze") }
                 answer?.let { Text(it) }
             }
         }
