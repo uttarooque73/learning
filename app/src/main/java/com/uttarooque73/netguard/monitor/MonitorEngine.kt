@@ -41,7 +41,7 @@ object MonitorEngine {
         }
         val changed = current.mapNotNull { service ->
             val old = previousByKey[key(service)] ?: return@mapNotNull null
-            if (old.serviceName == service.serviceName && old.reachable == service.reachable) return@mapNotNull null
+            if (old == service) return@mapNotNull null
             MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.SERVICE_CHANGED, service.ipAddress, "Service metadata changed")
         }
         val removed = previous.filter { key(it) !in currentServices }.map {
