@@ -336,126 +336,74 @@ Remaining release work:
 
 ---
 
-## Feature Roadmap — One Feature at a Time
+## Feature Roadmap — Implementation Status
 
-The following backlog is the next product-level roadmap. Each feature is implemented, tested, documented, and verified before moving to the next item.
+Status legend:
+- **Completed** — implemented in the repository with the documented MVP/foundation scope.
+- **Pending** — identified follow-up work that is not yet complete.
+- **Release validation** — implementation exists, but physical-device/release validation remains.
 
-### Feature 1 — Android Device Security Audit
-**Status: Implemented**
+### Core product phases
 
-- Android version and SDK information.
-- Android security patch level.
-- Secure screen-lock posture.
-- App-data encryption-at-rest signal.
-- Debuggable Android build signal.
-- Evidence, explanation, remediation, and verification for each check.
-- Keep device-security checks separate from network-exposure findings.
+| Phase | Status | Completed | Pending |
+|---|---|---|---|
+| 0 — Product & Architecture Foundation | **Completed** | Scope, authorization boundary, architecture, schemas, privacy/security model | None identified |
+| 1 — Android Foundation | **Completed** | Android build, Compose UI, navigation, permissions, protected local storage, dashboard | Physical-device UX validation |
+| 2 — Network Discovery | **Completed** | Network metadata, Wi-Fi/cellular posture, bounded device discovery, inventory persistence | Broader Android-version/device validation |
+| 3 — Service & Exposure Audit | **Completed** | Conservative service catalog, bounded TCP checks, service inventory | Expand service catalog only when safe and justified |
+| 4 — Security Audit Engine | **Completed** | Rule-based findings, evidence/confidence/severity, TLS/HTTP, DNS, gateway, Wi-Fi, mobile/app checks | Expand coverage and test edge cases |
+| 5 — Findings & Risk Dashboard | **Completed** | Explainable score, severity breakdown, finding detail, risk trend | Continue UI/UX polish and trend coverage |
+| 6 — Remediation Engine | **Completed** | Guided playbooks, remediation tracking, verification guidance; no remote auto-modification | More platform/device-specific guidance |
+| 7 — Verification & Before/After | **Completed** | Rechecks, before/after evidence, verification status/history | More verification adapters where technically safe |
+| 8 — Reports & Audit History | **Completed — MVP** | Snapshot history, full device/service persistence, findings/remediation/verification, text/JSON/CSV/PDF/ZIP, import and active restoration | Finish custom-policy history persistence validation; import confirmation/MIME UX |
+| 9 — Monitoring & Alerts | **Completed — MVP** | Scheduled WorkManager monitoring, configurable interval, device/service change detection, event history, notifications | Production hardening, permission failure UX, broader network-change coverage |
+| 10 — Baselines & Compliance | **Completed — MVP** | Baseline model/store/evaluator, secure-home baseline, PASS/FAIL/REVIEW | Framework mappings and richer configurable checklists |
+| 11 — Advanced Administration | **Completed — MVP** | Network profiles, asset metadata, admin events, dedicated administration UI | Team/backend synchronization remains intentionally pending |
+| 12 — Security, Performance & Release | **Foundation completed** | App hardening, secure storage, app lock, permission/security checks, release checklist, bounded discovery | Physical-device compatibility, runtime permission review, release signing/build validation |
 
-Documentation: `docs/features/01-android-device-security-audit.md`
+### Product features
 
-### Feature 2 — Installed Application Security Audit
-**Status: Implemented — MVP**
+| Feature | Status | Completed | Pending |
+|---|---|---|---|
+| 1. Android Device Security Audit | **Completed — MVP** | Android version/patch, screen lock, encryption posture, debuggable signal, evidence/remediation/verification | Broader physical-device validation |
+| 2. Installed Application Security Audit | **Completed — MVP** | App inventory, debuggable/backup/cleartext/exported-component checks, selected permission checks | More Android-version coverage and observable sideloading indicators |
+| 3. DNS Security Audit | **Completed — MVP** | DNS servers, Private DNS posture, gateway/DNS evidence and change tracking | Stronger encrypted-DNS transport evidence where Android exposes it |
+| 4. Gateway Security Audit | **Completed — MVP** | Gateway identity/change detection and service exposure checks | More gateway-management protocol coverage |
+| 5. TLS/HTTPS Security Analyzer | **Completed — MVP** | HTTPS reachability, certificate subject/issuer/expiry, hostname verification, safe redirect inspection | Stronger TLS protocol/cipher evidence where Android APIs permit it |
+| 6. HTTP Security Analyzer | **Completed — MVP** | Redirect, HSTS, CSP, X-Content-Type-Options, Referrer-Policy, normalized header inspection | Expanded cookie/security-header analysis |
+| 7. Wi-Fi Trust & Change Detection | **Completed — MVP** | SSID/BSSID/gateway/security-mode history and change classification with uncertainty | More trust signals and Android-version coverage |
+| 8. Remediation Center | **Completed — MVP** | Central queue, guided remediation, verification, history | More contextual platform/router guidance |
+| 9. Security Timeline | **Completed — Foundation** | Persistent timeline model/store, device/service/network/finding/remediation/verification events | Complete policy/administration/import event coverage and timeline UI validation |
+| 10. Advanced Reporting | **Completed — MVP** | JSON, CSV, PDF, ZIP audit package, executive/technical reports, importer | Full end-to-end release validation and richer report customization |
+| 11. Configurable Security Policies | **Completed — MVP** | Persistent custom policies, validation, BLOCK_PORT/REQUIRE_HTTPS rules, audit/report representation | Complete history persistence validation; richer thresholds/profiles |
+| 12. Security Learning Mode | **Completed — MVP** | Technical explanations, evidence interpretation, remediation and verification walkthroughs | Expand lesson content and interactive exercises |
 
-- Installed application inventory.
-- Dangerous/runtime permission review where Android permits it.
-- Debuggable application detection.
-- Cleartext traffic configuration.
-- Backup configuration.
-- Exported component indicators.
-- Sideloading/unknown-source indicators where accurately observable.
-- Per-application evidence and remediation guidance.
+### Additional implemented capabilities
 
-### Feature 3 — DNS Security Audit
-**Status: Implemented — MVP**
+- **Scheduled monitoring:** WorkManager-based recurring authorized inventory checks with configurable 1h–168h interval range and change notifications.
+- **Security Intelligence:** device identity inference, service fingerprints, topology model, limited OUI vendor candidates, DNS security analysis, risk trend points.
+- **Vulnerability intelligence:** NVD keyword-based candidate CVE discovery. Results remain explicitly unverified until product/version applicability is established.
+- **Custom policies:** persistent user-defined policy rules with validation and audit/report integration.
+- **App protection:** Android Keystore AES-GCM secure storage and app-lock policy with biometric support.
+- **Audit package import:** bounded, versioned ZIP importer with validation, limits, persistence, and active-audit restoration.
+- **Dedicated UI:** major capabilities have separate navigation destinations; the Overview dashboard is intentionally limited to posture and quick actions.
 
-- Active DNS servers.
-- Private DNS state.
-- DNS configuration changes.
-- Baseline comparison.
-- Evidence-backed DNS findings.
+### Current pending implementation backlog
 
-### Feature 4 — Gateway Security Audit
-**Status: Implemented — MVP**
-
-- Gateway identity tracking.
-- Gateway service exposure.
-- Management interface exposure.
-- Gateway change detection.
-- Evidence and remediation guidance.
-
-### Feature 5 — TLS/HTTPS Security Analyzer
-**Status: Implemented — MVP**
-
-- TLS reachability.
-- Certificate validity.
-- Certificate hostname matching.
-- Certificate expiry.
-- TLS protocol observations.
-- Safe HTTP-to-HTTPS checks.
-
-### Feature 6 — HTTP Security Analyzer
-**Status: Implemented — MVP**
-
-- HTTPS redirect behavior.
-- HSTS.
-- Content-Security-Policy.
-- X-Content-Type-Options.
-- Referrer-Policy.
-- Safe cookie security indicators.
-
-### Feature 7 — Wi-Fi Trust & Change Detection
-**Status: Implemented — MVP**
-
-- SSID/BSSID history.
-- Gateway identity history.
-- Wi-Fi security-mode changes.
-- New BSSID warning for a known SSID.
-- Explicit uncertainty; never claim a rogue AP from one signal.
-
-### Feature 8 — Remediation Center
-**Status: Implemented — MVP**
-
-- Central remediation queue.
-- Android Settings shortcuts where supported.
-- Guided network/device remediation.
-- Before/after verification.
-- Remediation history.
-
-### Feature 9 — Security Timeline
-**Status: Implemented — foundation**
-
-- Device changes.
-- Service changes.
-- Network identity changes.
-- Finding state changes.
-- Remediation and verification events.
-- Persistent local timeline storage capped at 200 events.
-
-### Feature 10 — Advanced Reporting
-**Status: Implemented — MVP**
-
-- JSON export.
-- CSV export.
-- PDF report.
-- Shareable audit package.
-- Executive and technical report views.
-
-### Feature 11 — Configurable Security Policies
-**Status: Implemented — MVP**
-
-- User-defined policy profiles with separate rule sets.
-- Home/work policy profiles with profile-specific evaluation behavior.
-- Policy evaluation history remains represented by audit/report history.
-- Custom threshold support remains limited to the currently modeled policy inputs.
-
-### Feature 12 — Security Learning Mode
-**Status: Implemented — MVP**
-
-- Technical explanations.
-- Why the issue matters.
-- Evidence interpretation.
-- Defensive remediation concepts.
-- Verification walkthroughs.
+1. **Audit history completeness** — verify and finish persistence/restoration of custom policy evaluations and all audit metadata.
+2. **Imported-audit UX** — add import confirmation, clearer error states, and robust MIME/provider handling.
+3. **Timeline completeness** — add policy, administration, and audit-import events consistently.
+4. **Monitoring hardening** — improve permission failure UX, scheduling edge cases, and network-change coverage.
+5. **Security intelligence expansion** — richer service fingerprints and confidence/evidence handling without claiming unsupported device identities.
+6. **Vulnerability intelligence expansion** — add product/version evidence before treating candidate CVEs as applicable.
+7. **TLS/HTTP expansion** — improve protocol/cipher and cookie/security-header evidence where platform APIs permit.
+8. **Wi-Fi trust expansion** — add additional observable trust signals while retaining explicit uncertainty.
+9. **Mobile/app security expansion** — increase Android-version coverage and observable application posture checks.
+10. **Reporting completion** — richer report customization and full release validation.
+11. **App-lock hardening** — validate cancellation, unavailable biometric, lockout, process restart, and background-transition behavior on physical devices.
+12. **Test coverage** — expand unit/integration coverage around persistence, import/export, monitoring, timeline, and policy evaluation.
+13. **Release validation** — physical-device compatibility, runtime permission review, release build/signing validation, and regression QA.
+14. **Additional defensive features** — continue adding two useful defensive features per implementation iteration after the pending backlog is reviewed.
 
 ### Feature delivery rule
 
@@ -472,24 +420,3 @@ For every feature:
 9. Update this roadmap.
 10. Only then start the next feature.
 
-## UI and Intelligence Expansion
-
-- Dedicated navigation destinations for Network, Devices, Services, Findings, Remediation, Monitoring, Baseline, Mobile, Wi-Fi, Web, Policies, Timeline, Reports, Administration, Learning, and Advanced security.
-- Security Intelligence: asset classification, limited OUI vendor candidates, service fingerprint evidence, network topology model, DNS security analysis, risk trend points, and evidence-backed vulnerability candidates.
-- Local security hardening primitives: Android Keystore AES-GCM secure storage, app-lock policy model, and security notification helper.
-- Feature screens are intentionally separated from the Overview dashboard; Overview is limited to posture and quick actions.
-
-
-## Remaining feature implementation completed
-
-The latest implementation adds:
-- scheduled WorkManager-based inventory monitoring with configurable 1h/6h/24h intervals and change notifications
-- device identity inference from observed services and hostname evidence
-- NVD keyword-based CVE discovery explicitly presented as unverified candidates
-- persistent custom security policies with validation
-- persistent app-protection policy controls
-- audit ZIP summary importer foundation
-- tests for the new identity, policy, and scheduling primitives
-- dedicated Advanced Security controls rather than adding these controls to the Overview dashboard
-
-Scheduled monitoring remains bounded to the existing device/service discovery catalog and does not perform credential attacks, exploitation, or remote modification.
