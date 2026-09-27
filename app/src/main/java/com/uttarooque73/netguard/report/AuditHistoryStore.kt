@@ -18,7 +18,27 @@ class AuditHistoryStore(context: Context) {
                 put("deviceCount", snapshot.devices.size)
                 put("serviceCount", snapshot.services.size)
                 put("findingCount", snapshot.findings.size)
-                put("network", snapshot.network?.let { JSONObject().put("localAddress", it.localAddress).put("gatewayAddress", it.gatewayAddress).put("subnet", it.subnet) })
+                put("network", snapshot.network?.let { network ->
+                    JSONObject().apply {
+                        put("interfaceName", network.interfaceName)
+                        put("localAddress", network.localAddress)
+                        put("gatewayAddress", network.gatewayAddress)
+                        put("subnet", network.subnet)
+                        put("dnsServers", JSONArray(network.dnsServers))
+                        put("ssid", network.ssid)
+                        put("bssid", network.bssid)
+                        put("wifiSecurity", network.wifiSecurity)
+                    }
+                })
+                put("devices", JSONArray(snapshot.devices.map { device ->
+                    JSONObject().put("ipAddress", device.ipAddress).put("hostname", device.hostname)
+                        .put("reachable", device.reachable).put("discoveredAtEpochMs", device.discoveredAtEpochMs)
+                }))
+                put("services", JSONArray(snapshot.services.map { service ->
+                    JSONObject().put("ipAddress", service.ipAddress).put("port", service.port)
+                        .put("protocol", service.protocol).put("serviceName", service.serviceName)
+                        .put("reachable", service.reachable).put("discoveredAtEpochMs", service.discoveredAtEpochMs)
+                }))
                 put("findings", JSONArray(snapshot.findings.map { JSONObject().put("id", it.id).put("title", it.title).put("severity", it.severity.name).put("confidence", it.confidence.name).put("ipAddress", it.ipAddress).put("evidence", it.evidence).put("remediation", it.remediation).put("createdAtEpochMs", it.createdAtEpochMs) }))
                 put("remediations", JSONArray(snapshot.remediationRecords.map { JSONObject().put("findingId", it.findingId).put("ipAddress", it.ipAddress).put("status", it.status.name).put("startedAtEpochMs", it.startedAtEpochMs) }))
                 put("verifications", JSONArray(snapshot.verificationResults.map { JSONObject().put("findingId", it.findingId).put("ipAddress", it.ipAddress).put("status", it.status.name).put("beforeEvidence", it.beforeEvidence).put("afterEvidence", it.afterEvidence).put("verifiedAtEpochMs", it.verifiedAtEpochMs) }))
