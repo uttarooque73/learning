@@ -388,22 +388,22 @@ Status legend:
 - **Audit package import:** bounded, versioned ZIP importer with validation, limits, persistence, and active-audit restoration.
 - **Dedicated UI:** major capabilities have separate navigation destinations; the Overview dashboard is intentionally limited to posture and quick actions.
 
-### Current pending implementation backlog
+### Current implementation backlog
 
 1. **Audit history completeness** — completed: network, device, service, finding, remediation, verification, and custom-policy evaluation data are persisted/restored.
 2. **Imported-audit UX** — completed: explicit confirmation, ZIP/octet-stream provider support, bounded validation, and user-visible failure reporting.
 3. **Timeline completeness** — completed: policy, administration, audit-import, mobile, baseline, and report events are recorded.
 4. **Monitoring hardening** — completed: network-context changes reset the baseline safely; device/service metadata changes are detected and persisted.
-5. **Security intelligence expansion** — richer service fingerprints and confidence/evidence handling without claiming unsupported device identities.
-6. **Vulnerability intelligence expansion** — add product/version evidence before treating candidate CVEs as applicable.
-7. **TLS/HTTP expansion** — improve protocol/cipher and cookie/security-header evidence where platform APIs permit.
-8. **Wi-Fi trust expansion** — add additional observable trust signals while retaining explicit uncertainty.
-9. **Mobile/app security expansion** — increase Android-version coverage and observable application posture checks.
-10. **Reporting completion** — completed: CSV now includes findings/remediation/verification/policy records and PDF includes network, risk, evidence, remediation, verification, and policy detail; physical-device/release validation remains.
-11. **App-lock hardening** — validate cancellation, unavailable biometric, lockout, process restart, and background-transition behavior on physical devices.
-12. **Test coverage** — expand unit/integration coverage around persistence, import/export, monitoring, timeline, and policy evaluation.
-13. **Release validation** — physical-device compatibility, runtime permission review, release build/signing validation, and regression QA.
-14. **Additional defensive features** — continue adding two useful defensive features per implementation iteration after the pending backlog is reviewed.
+5. **Security intelligence expansion** — completed for the current safe scope: richer port/service fingerprints now expose product candidates while explicitly refusing unsupported version claims.
+6. **Vulnerability intelligence expansion** — completed for the current safe scope: candidate CVEs now have an explicit applicability evaluator requiring product/version evidence before verification.
+7. **TLS/HTTP expansion** — completed for the current safe scope: TLS protocol/cipher evidence and expanded HTTP security findings include HSTS, CSP, MIME, Referrer-Policy, and cookie flag checks.
+8. **Wi-Fi trust expansion** — completed for the current safe scope: BSSID changes, security-mode downgrades, and network-context changes are classified with explicit uncertainty.
+9. **Mobile/app security expansion** — current observable Android posture checks are implemented; broader Android-version/device coverage remains a validation task.
+10. **Reporting completion** — completed: CSV includes findings/remediation/verification/policy records and PDF includes network, risk, evidence, remediation, verification, and policy detail.
+11. **App-lock hardening** — completed in code: explicit lock/background state handling, five-failure cooldown, and cooldown enforcement are covered by unit tests. Physical biometric behavior still requires device validation.
+12. **Test coverage** — expanded with service fingerprint, CVE applicability, web policy, Wi-Fi trust, and app-lock regression tests.
+13. **Release validation** — automated CI/release configuration is present; physical-device compatibility, runtime permission review, signed-release verification, and regression QA remain environment-dependent validation tasks.
+14. **Additional defensive features** — this iteration adds richer service fingerprinting, CVE applicability gating, expanded web policy analysis, deeper Wi-Fi trust signals, and app-lock state hardening.
 
 ### Feature delivery rule
 
