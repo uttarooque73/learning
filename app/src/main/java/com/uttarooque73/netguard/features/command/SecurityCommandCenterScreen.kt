@@ -16,6 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.uttarooque73.netguard.report.AuditHistoryStore
+import com.uttarooque73.netguard.features.reporting.InvestigationPackageExporter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uttarooque73.netguard.audit.DiscoveredService
@@ -33,7 +36,8 @@ fun SecurityCommandCenterScreen(
     findings: List<Finding>,
     monitorEvents: List<MonitorEvent>,
     wifiTrust: WifiTrustResult?,
-    onExportInvestigation: () -> Unit
+    onExportInvestigation: () -> Unit,
+    onRunProfile: (AuditProfile) -> Unit
 ) {
     var profile by remember { mutableStateOf(AuditProfile.STANDARD) }
     var experimentResult by remember { mutableStateOf<ExperimentResult?>(null) }
@@ -42,6 +46,19 @@ fun SecurityCommandCenterScreen(
 
     val summary = CommandCenterEngine.investigation(devices, services, findings, monitorEvents)
     val contributions = CommandCenterEngine.scoreContributions(findings)
+    val context = LocalContext.current
+    val historyStore = remember(context) { AuditHistoryStore(context) }
+    val history = remember(historyStore, network, devices, services, findings) { historyStore.load() }
+    val afterSnapshot = remember(network, devices, services, findings) {
+        history.lastOrNull()?.let { historyStore.loadSnapshot(it.id) }
+    }
+    val beforeSnapshot = remember(history) {
+        history.dropLast(1).lastOrNull()?.let { historyStore.loadSnapshot(it.id) }
+    }
+    val diff = if (beforeSnapshot != null && afterSnapshot != null) {
+        InvestigationDiffEngine.compare(beforeSnapshot, afterSnapshot)
+    } else null
+    val profiles = if (afterSnapshot != null) AssetSecurityProfileBuilder.build(afterSnapshot, beforeSnapshot) else emptyList()
 
     Column(Modifier.fillMaxWidth().padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Security Command Center", style = MaterialTheme.typography.headlineMedium)
@@ -112,6 +129,8 @@ fun SecurityCommandCenterScreen(
                     }
                 }
                 Text(profile.description)
+                Text(AuditProfilePlanner.plan(profile).resourceWarning)
+                Button(onClick = { onRunProfile(profile) }) { Text("Run ${profile.label}") }
                 Text("Scope only. No exploitation, brute force, stealth, credential attacks, or access-control bypass.")
             }
         }
@@ -139,16 +158,28 @@ fun SecurityCommandCenterScreen(
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Exposure Diff", style = MaterialTheme.typography.titleMedium)
+                if (diff == null) Text("Run and save at least two audits to compare snapshots.") else {
+                    Text("Risk: ${diff.riskBefore}/100 → ${diff.riskAfter}/100")
+                    Text("Devices +${diff.addedDevices.size} / -${diff.removedDevices.size}; Services +${diff.addedServices.size} / -${diff.removedServices.size}")
+                    Text("Findings +${diff.newFindings.size} / resolved ${diff.resolvedFindings.size}")
+                    diff.remediationChanges.take(5).forEach { Text("Remediation: $it") }
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Asset Security Profiles", style = MaterialTheme.typography.titleMedium)
-                if (devices.isEmpty()) {
+                if (profiles.isEmpty()) {
                     Text("No assets are currently profiled.")
                 } else {
-                    devices.take(8).forEach { device ->
-                        val assetServices = services.filter { it.ipAddress == device.ipAddress }
-                        val assetFindings = findings.filter { it.ipAddress == device.ipAddress }
-                        Text(device.ipAddress + " — " + (device.hostname ?: "unknown hostname"), style = MaterialTheme.typography.titleSmall)
-                        Text("Services: " + assetServices.count { it.reachable } + " • Findings: " + assetFindings.size)
-                        assetServices.take(4).forEach { Text("  " + it.protocol + "/" + it.port + " — " + it.serviceName) }
+                    profiles.take(8).forEach { asset ->
+                        Text(asset.ipAddress + " — " + (asset.hostname ?: "unknown hostname"), style = MaterialTheme.typography.titleSmall)
+                        Text("Services: " + asset.services.count { it.reachable } + " • Findings: " + asset.findings.size + " • Changes: " + asset.changeCount)
+                        Text("First seen: " + asset.firstSeenEpochMs + " • Last seen: " + asset.lastSeenEpochMs)
+                        Text("Remediation: " + asset.remediationState)
+                        asset.services.take(4).forEach { Text("  " + it.protocol + "/" + it.port + " — " + it.serviceName) }
                     }
                 }
             }
@@ -188,8 +219,9 @@ fun SecurityCommandCenterScreen(
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Local Investigation Package", style = MaterialTheme.typography.titleMedium)
-                Text("Exports the current bounded audit evidence as a versioned local audit package.")
+                Text("Exports selected recent snapshots, snapshot diff, and timeline evidence as a bounded investigation bundle.")
                 Button(onClick = onExportInvestigation) { Text("Export investigation package") }
+                Text("Stored snapshots: " + history.size)
             }
         }
 
