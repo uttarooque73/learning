@@ -405,7 +405,8 @@ class MainActivity : FragmentActivity() {
                 onRequestNotificationPermission = ::requestNotificationPermission,
                 privacyExposureRunning = privacyExposureRunning,
                 privacyExposureReport = privacyExposureReport,
-                onRunPrivacyExposureScan = ::runPrivacyExposureScan
+                onRunPrivacyExposureScan = ::runPrivacyExposureScan,
+                onExportIncidentTimeline = ::exportIncidentTimeline
                 )
             }
         }
@@ -665,6 +666,35 @@ class MainActivity : FragmentActivity() {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             },
             "Share NetGuard report"
+        ))
+    }
+
+
+    private fun exportIncidentTimeline() {
+        val file = java.io.File(cacheDir, "netguard-incident-timeline-" + System.currentTimeMillis() + ".json")
+        val json = org.json.JSONArray()
+        com.uttarooque73.netguard.features.timeline.IncidentTimelineEngine.replay(timelineEvents).forEach { incident ->
+            json.put(org.json.JSONObject().apply {
+                put("timestampEpochMs", incident.source.createdAtEpochMs)
+                put("type", incident.type.name)
+                put("severity", incident.severity.name)
+                put("title", incident.source.title)
+                put("entity", incident.entity)
+                put("evidence", incident.evidence)
+                put("whyItMatters", incident.whyItMatters)
+                put("recommendedAction", incident.recommendedAction)
+            })
+        }
+        file.writeText(json.toString(2))
+        recordTimeline("report", "Incident timeline exported", "Exported local security event timeline")
+        val uri = FileProvider.getUriForFile(this, "com.uttarooque73.netguard.fileprovider", file)
+        startActivity(Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            },
+            "Share incident timeline"
         ))
     }
 
@@ -1226,7 +1256,8 @@ fun NetGuardApp(
     onRequestNotificationPermission: () -> Unit,
     privacyExposureRunning: Boolean,
     privacyExposureReport: PrivacyExposureReport?,
-    onRunPrivacyExposureScan: () -> Unit
+    onRunPrivacyExposureScan: () -> Unit,
+    onExportIncidentTimeline: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1325,7 +1356,8 @@ fun NetGuardApp(
                 onRequestNotificationPermission = onRequestNotificationPermission,
                 privacyExposureRunning = privacyExposureRunning,
                 privacyExposureReport = privacyExposureReport,
-                onRunPrivacyExposureScan = onRunPrivacyExposureScan
+                onRunPrivacyExposureScan = onRunPrivacyExposureScan,
+                onExportIncidentTimeline = onExportIncidentTimeline
             )
         }
     }
@@ -1395,7 +1427,8 @@ private fun Dashboard(
     onRequestNotificationPermission: () -> Unit,
     privacyExposureRunning: Boolean,
     privacyExposureReport: PrivacyExposureReport?,
-    onRunPrivacyExposureScan: () -> Unit
+    onRunPrivacyExposureScan: () -> Unit,
+    onExportIncidentTimeline: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -1697,7 +1730,7 @@ private fun Dashboard(
             Screen.Wifi -> WifiTrustPage(wifiTrustResult, onObserveWifiTrust)
             Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
             Screen.Policies -> PolicyFeatureScreen(policyResults, selectedPolicyProfile, onSelectPolicyProfile)
-            Screen.Timeline -> TimelineFeatureScreen(timelineEvents)
+            Screen.Timeline -> TimelineFeatureScreen(timelineEvents, onExportIncidentTimeline)
             Screen.Reports -> FeatureListScreen("Reports", "Saved audit history and audit package import/export.") { ReportSection(auditHistory, latestReport, onCreateReport, onImportAuditPackage) }
             Screen.Administration -> FeatureListScreen("Administration", "Network profiles, asset metadata and administrative events.") { AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset) }
             Screen.Learning -> LearningScreen()
