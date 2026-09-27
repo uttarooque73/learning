@@ -120,6 +120,10 @@ import com.uttarooque73.netguard.consumer.SecurityPosture
 import com.uttarooque73.netguard.notifications.SecurityNotificationHelper
 import com.uttarooque73.netguard.features.privacy.DevicePrivacyExposureScanner
 import com.uttarooque73.netguard.features.privacy.PrivacyExposureReport
+import com.uttarooque73.netguard.features.baseline.TrustedSecurityBaselineStore
+import com.uttarooque73.netguard.features.baseline.TrustedSecurityBaselineSnapshot
+import com.uttarooque73.netguard.features.baseline.SecurityDrift
+import com.uttarooque73.netguard.features.baseline.SecurityDriftEngine
 import com.uttarooque73.netguard.features.reporting.InvestigationPackageExporter
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 import com.uttarooque73.netguard.features.reporting.AuditPackageImporter
@@ -211,6 +215,9 @@ class MainActivity : FragmentActivity() {
     private var customPolicyEvaluations by mutableStateOf<List<CustomPolicyEvaluation>>(emptyList())
     private var selectedPolicyProfile by mutableStateOf("Home")
     private lateinit var timelineStore: SecurityTimelineStore
+    private lateinit var trustedBaselineStore: TrustedSecurityBaselineStore
+    private var trustedBaseline by mutableStateOf<TrustedSecurityBaselineSnapshot?>(null)
+    private var securityDrifts by mutableStateOf<List<SecurityDrift>>(emptyList())
     private lateinit var appLockPolicyStore: AppLockPolicyStore
     private lateinit var userAccountStore: UserAccountStore
     private lateinit var userContactStore: UserContactStore
@@ -293,6 +300,8 @@ class MainActivity : FragmentActivity() {
         adminStore = AdminStore(this)
         wifiObservationStore = WifiObservationStore(this)
         timelineStore = SecurityTimelineStore(this)
+        trustedBaselineStore = TrustedSecurityBaselineStore(this)
+        trustedBaseline = trustedBaselineStore.load()
         services = serviceStore.load()
         findings = findingStore.load()
         remediationRecords = remediationStore.load()
@@ -406,7 +415,11 @@ class MainActivity : FragmentActivity() {
                 privacyExposureRunning = privacyExposureRunning,
                 privacyExposureReport = privacyExposureReport,
                 onRunPrivacyExposureScan = ::runPrivacyExposureScan,
-                onExportIncidentTimeline = ::exportIncidentTimeline
+                onExportIncidentTimeline = ::exportIncidentTimeline,
+                trustedBaseline = trustedBaseline,
+                securityDrifts = securityDrifts,
+                onCaptureTrustedBaseline = ::captureTrustedBaseline,
+                onClearTrustedBaseline = ::clearTrustedBaseline
                 )
             }
         }
@@ -539,6 +552,26 @@ class MainActivity : FragmentActivity() {
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
+    private fun captureTrustedBaseline() {
+        val snapshot = SecurityDriftEngine.snapshot(networkInfo, devices, services, appSecurityChecks, System.currentTimeMillis())
+        trustedBaselineStore.save(snapshot)
+        trustedBaseline = snapshot
+        securityDrifts = emptyList()
+        recordTimeline("baseline", "Trusted security baseline captured", "Current network, device, service and application state was saved as trusted baseline")
+    }
+
+    private fun clearTrustedBaseline() {
+        trustedBaselineStore.clear(); trustedBaseline = null; securityDrifts = emptyList()
+        recordTimeline("baseline", "Trusted security baseline cleared", "Trusted drift reference was removed")
+    }
+
+    private fun evaluateSecurityDrift() {
+        val baseline = trustedBaseline ?: return
+        val current = SecurityDriftEngine.snapshot(networkInfo, devices, services, appSecurityChecks, System.currentTimeMillis())
+        securityDrifts = SecurityDriftEngine.compare(baseline, current)
+        securityDrifts.take(20).forEach { drift -> recordTimeline("baseline-drift", drift.title, drift.before + " → " + drift.after) }
+    }
+
     private fun runPrivacyExposureScan() {
         if (privacyExposureRunning) return
         privacyExposureRunning = true
@@ -600,6 +633,7 @@ class MainActivity : FragmentActivity() {
                     wifiObservationStore.save(currentWifi)
                 }
                 appSecurityChecks = runCatching { InstalledAppSecurityAudit.inspect(this@MainActivity) }.getOrDefault(emptyList())
+                evaluateSecurityDrift()
                 privacyExposureReport = DevicePrivacyExposureScanner.scan(this@MainActivity, appSecurityChecks)
                 val mobile = mobileSecurity
                 val policyInput = PolicyInput(
@@ -1257,7 +1291,11 @@ fun NetGuardApp(
     privacyExposureRunning: Boolean,
     privacyExposureReport: PrivacyExposureReport?,
     onRunPrivacyExposureScan: () -> Unit,
-    onExportIncidentTimeline: () -> Unit
+    onExportIncidentTimeline: () -> Unit,
+    trustedBaseline: TrustedSecurityBaselineSnapshot?,
+    securityDrifts: List<SecurityDrift>,
+    onCaptureTrustedBaseline: () -> Unit,
+    onClearTrustedBaseline: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1357,7 +1395,11 @@ fun NetGuardApp(
                 privacyExposureRunning = privacyExposureRunning,
                 privacyExposureReport = privacyExposureReport,
                 onRunPrivacyExposureScan = onRunPrivacyExposureScan,
-                onExportIncidentTimeline = onExportIncidentTimeline
+                onExportIncidentTimeline = onExportIncidentTimeline,
+                trustedBaseline = trustedBaseline,
+                securityDrifts = securityDrifts,
+                onCaptureTrustedBaseline = onCaptureTrustedBaseline,
+                onClearTrustedBaseline = onClearTrustedBaseline
             )
         }
     }
@@ -1428,7 +1470,11 @@ private fun Dashboard(
     privacyExposureRunning: Boolean,
     privacyExposureReport: PrivacyExposureReport?,
     onRunPrivacyExposureScan: () -> Unit,
-    onExportIncidentTimeline: () -> Unit
+    onExportIncidentTimeline: () -> Unit,
+    trustedBaseline: TrustedSecurityBaselineSnapshot?,
+    securityDrifts: List<SecurityDrift>,
+    onCaptureTrustedBaseline: () -> Unit,
+    onClearTrustedBaseline: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -1725,7 +1771,7 @@ private fun Dashboard(
             }
             Screen.Remediation -> RemediationFeatureScreen(findings, remediationRecords, onStartRemediation, verificationResults, onVerifyFinding, verifyingFindingId)
             Screen.Monitoring -> FeatureListScreen("Monitoring", "Local inventory change monitoring.") { MonitoringSection(monitoring, monitorEvents, onCheckChanges) }
-            Screen.Baseline -> FeatureListScreen("Baseline", "Evidence-backed local security baseline evaluation.") { BaselineSection(baselineResults, onEvaluateBaseline) }
+            Screen.Baseline -> FeatureListScreen("Baseline", "Trusted state, policy checks and security drift detection.") { BaselineSection(baselineResults, onEvaluateBaseline, trustedBaseline, securityDrifts, onCaptureTrustedBaseline, onClearTrustedBaseline) }
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
             Screen.Wifi -> WifiTrustPage(wifiTrustResult, onObserveWifiTrust)
             Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
