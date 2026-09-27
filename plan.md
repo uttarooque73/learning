@@ -593,3 +593,11 @@ Implemented UX/productivity hardening across the existing security screens witho
 - Installed Applications, DNS/Gateway, Call Protection, Mobile Security, Contacts, Advanced Security, and Security Command Center were reviewed against their existing implementation and retained as dedicated workflows rather than duplicating them on the dashboard.
 
 This review focuses on making existing evidence actionable and reducing information overload rather than adding unsafe offensive capabilities.
+
+
+### Screen review follow-up — 2026-09-27
+
+- Security Command Center: converted profile runs, experiments, investigation export, and evidence analysis to visible loading actions; local Ollama analysis now validates required inputs and resets its running state after failures.
+- Profile: added an account-security/completeness summary and prevents saving a blank display name.
+- Advanced Security: custom policy creation now validates required ID/title fields and validates BLOCK_PORT values against the 1–65535 range before persistence.
+- CI verification: each change is pushed to main and validated through the Android CI workflow; the latest runs remain in progress at the time of this update.
