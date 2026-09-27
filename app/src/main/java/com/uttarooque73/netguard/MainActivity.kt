@@ -54,6 +54,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import com.uttarooque73.netguard.network.DeviceDiscovery
 import com.uttarooque73.netguard.network.DiscoveredDevice
+import com.uttarooque73.netguard.network.DeviceObservationStatus
 import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
 import com.uttarooque73.netguard.network.NetworkInventoryStore
@@ -1593,7 +1594,8 @@ private fun DevicesScreen(
         Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
         Text(
             devices.size.toString() + " discovered • " +
-                devices.count { d -> findings.any { it.ipAddress == d.ipAddress } } + " with findings",
+                devices.count { d -> findings.any { it.ipAddress == d.ipAddress } } + " with findings • " +
+                devices.count { d -> d.observationStatus(System.currentTimeMillis()) == DeviceObservationStatus.STALE } + " stale",
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         OutlinedTextField(
@@ -1614,7 +1616,20 @@ private fun DevicesScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
-                    Text("Status: " + if (device.reachable) "Reachable" else "Not reachable")
+                    val observationStatus = device.observationStatus(System.currentTimeMillis())
+                    Text(
+                        "Status: " + when (observationStatus) {
+                            DeviceObservationStatus.REACHABLE -> "Reachable"
+                            DeviceObservationStatus.UNREACHABLE -> "Not reachable"
+                            DeviceObservationStatus.STALE -> "Stale observation"
+                        }
+                    )
+                    if (observationStatus == DeviceObservationStatus.STALE) {
+                        Text(
+                            "This device was discovered more than 15 minutes ago. Re-run discovery before treating it as currently reachable.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text("Hostname: " + (device.hostname ?: "Unavailable"))
                     Text("Exposure: " + deviceServices.count { it.reachable } + " reachable service(s)")
                     if (deviceFindings.isNotEmpty()) {
