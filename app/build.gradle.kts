@@ -21,10 +21,12 @@ android {
             val keystorePath = System.getenv("NETGUARD_KEYSTORE_PATH")
             val keystorePassword = System.getenv("NETGUARD_KEYSTORE_PASSWORD")
             val keyAlias = System.getenv("NETGUARD_KEY_ALIAS")
+            val keyPassword = System.getenv("NETGUARD_KEY_PASSWORD")
 
             if (!keystorePath.isNullOrBlank() &&
                 !keystorePassword.isNullOrBlank() &&
-                !keyAlias.isNullOrBlank()
+                !keyAlias.isNullOrBlank() &&
+                !keyPassword.isNullOrBlank()
             ) {
                 storeFile = file(keystorePath)
                 storePassword = keystorePassword
@@ -39,9 +41,11 @@ android {
             val releaseKeystorePath = System.getenv("NETGUARD_KEYSTORE_PATH")
             val releaseKeystorePassword = System.getenv("NETGUARD_KEYSTORE_PASSWORD")
             val releaseKeyAlias = System.getenv("NETGUARD_KEY_ALIAS")
+            val releaseKeyPassword = System.getenv("NETGUARD_KEY_PASSWORD")
             signingConfig = if (!releaseKeystorePath.isNullOrBlank() &&
                 !releaseKeystorePassword.isNullOrBlank() &&
-                !releaseKeyAlias.isNullOrBlank()
+                !releaseKeyAlias.isNullOrBlank() &&
+                !releaseKeyPassword.isNullOrBlank()
             ) {
                 signingConfigs.getByName("release")
             } else {
