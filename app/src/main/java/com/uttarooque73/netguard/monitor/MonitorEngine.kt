@@ -21,9 +21,15 @@ object MonitorEngine {
     fun compareDevices(previous: List<DiscoveredDevice>, current: List<DiscoveredDevice>): List<MonitorEvent> {
         val oldIps = previous.map { it.ipAddress }.toSet()
         val previousByIp = previous.associateBy { it.ipAddress }
-        return current.filter { it.ipAddress !in oldIps }.map {
+        val added = current.filter { it.ipAddress !in oldIps }.map {
             MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.NEW_DEVICE, it.ipAddress, "New device discovered: ${it.hostname ?: "unknown hostname"}")
         }
+        val changed = current.mapNotNull { device ->
+            val oldDevice = previousByIp[device.ipAddress] ?: return@mapNotNull null
+            if (oldDevice.hostname == device.hostname && oldDevice.reachable == device.reachable) return@mapNotNull null
+            MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.DEVICE_CHANGED, device.ipAddress, "Device metadata changed")
+        }
+        return added + changed
     }
 
     fun compareServices(previous: List<DiscoveredService>, current: List<DiscoveredService>): List<MonitorEvent> {
