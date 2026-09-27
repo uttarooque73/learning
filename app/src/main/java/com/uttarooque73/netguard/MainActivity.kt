@@ -1338,6 +1338,7 @@ private fun MobileSecuritySection(
         )
         Button(onClick = onRefresh, enabled = !running) {
             Text(if (running) "Auditing..." else "Refresh mobile audit")
+        }
 
         if (snapshot == null) {
             Text("Mobile security audit has not run yet.")
@@ -1347,7 +1348,6 @@ private fun MobileSecuritySection(
             }
         }
     }
-}
 }
 
 @Composable
