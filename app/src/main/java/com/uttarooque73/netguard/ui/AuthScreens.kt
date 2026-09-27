@@ -83,7 +83,8 @@ fun SignUpScreen(
     onPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
     onSignUp: () -> Unit,
-    onLogin: () -> Unit
+    onLogin: () -> Unit,
+    onContinueAsGuest: () -> Unit
 ) {
     var showPassword by remember { mutableStateOf(false) }
     AuthShell("Create your NetGuard account") {
@@ -94,6 +95,12 @@ fun SignUpScreen(
         TextButton(onClick = { showPassword = !showPassword }) { Text(if (showPassword) "Hide passwords" else "Show passwords") }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         LoadingButton(onClick = onSignUp, modifier = Modifier.fillMaxWidth(), enabled = displayName.isNotBlank() && email.isNotBlank() && password.length >= 8 && password == confirmPassword) { Text("Create account") }
+        LoadingTextButton(onClick = onContinueAsGuest) { Text("Continue without account") }
+        Text(
+            "You can run core security checks locally without creating an account.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         LoadingTextButton(onClick = onLogin) { Text("Already have an account? Login") }
     }
 }
