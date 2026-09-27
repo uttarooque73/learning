@@ -1066,8 +1066,6 @@ fun NetGuardApp(
             } else if (selectedScreen == Screen.Contacts) {
                 ContactNumbersScreen(savedContacts, deviceContacts, contactError, onAddContact, onRemoveContact)
             } else if (selectedScreen == Screen.CallProtection) {
-                val roleManager = getSystemService(android.app.role.RoleManager::class.java)
-                val screeningEnabled = roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true
                 CallProtectionScreen(callProtectionLogs, blockedNumbers, onBlockNumber, onUnblockNumber, onClearCallLogs, onEnableCallScreening, callScreeningEnabled)
             } else Dashboard(
                 modifier = Modifier.padding(padding),
