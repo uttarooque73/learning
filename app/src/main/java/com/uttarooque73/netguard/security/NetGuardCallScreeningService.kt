@@ -12,7 +12,7 @@ class NetGuardCallScreeningService : CallScreeningService() {
         store.addLog(
             number.ifBlank { "Unknown number" },
             findContactName(number),
-            if (callDetails.callDirection == Call.Details.DIRECTION_INCOMING) "Incoming" else "Outgoing",
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&\n                callDetails.callDirection == Call.Details.DIRECTION_INCOMING) "Incoming" else "Outgoing",
             blocked
         )
 
