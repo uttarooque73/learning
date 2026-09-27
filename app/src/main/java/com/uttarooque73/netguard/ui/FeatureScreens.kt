@@ -88,9 +88,63 @@ import com.uttarooque73.netguard.features.timeline.SecurityTimelineEvent
     results.forEach { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(it.status.name + " — " + it.title, style = MaterialTheme.typography.titleMedium); Text(it.description) } } }
 }
 
-@Composable fun TimelineFeatureScreen(events: List<SecurityTimelineEvent>) = FeatureListScreen("Security Timeline", "Local chronological security activity.") {
-    var category by remember { mutableStateOf("ALL") }; val categories = listOf("ALL") + events.map { it.category.uppercase() }.distinct(); val filtered = events.filter { category == "ALL" || it.category.uppercase() == category }
-    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Investigation filters", style = MaterialTheme.typography.titleMedium); Text(events.size.toString() + " events recorded"); Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { categories.forEach { c -> FilterChip(category == c, { category = c }, label = { Text(c) }) } } } }
-    if (filtered.isEmpty()) Text("No timeline events match this filter.")
-    filtered.reversed().forEach { e -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(e.category.uppercase() + " — " + e.title, style = MaterialTheme.typography.titleMedium); Text(e.detail) } } }
+@Composable fun TimelineFeatureScreen(
+    events: List<SecurityTimelineEvent>,
+    onExport: () -> Unit
+) = FeatureListScreen("Security Timeline", "Replay what changed, why it matters, and what to verify.") {
+    var type by remember { mutableStateOf<com.uttarooque73.netguard.features.timeline.IncidentEventType?>(null) }
+    var severity by remember { mutableStateOf<com.uttarooque73.netguard.features.timeline.IncidentSeverity?>(null) }
+    var expandedId by remember { mutableStateOf<String?>(null) }
+    val incidents = com.uttarooque73.netguard.features.timeline.IncidentTimelineEngine.replay(events)
+    val filtered = incidents.filter { type == null || it.type == type }.filter { severity == null || it.severity == severity }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Incident replay", style = MaterialTheme.typography.titleMedium)
+            Text(filtered.size.toString() + " events • " + incidents.count { it.severity == com.uttarooque73.netguard.features.timeline.IncidentSeverity.HIGH } + " high • " + incidents.count { it.severity == com.uttarooque73.netguard.features.timeline.IncidentSeverity.REVIEW } + " review")
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(type == null, { type = null }, label = { Text("All") })
+                com.uttarooque73.netguard.features.timeline.IncidentEventType.values().forEach { t ->
+                    FilterChip(type == t, { type = if (type == t) null else t }, label = { Text(t.name) })
+                }
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(severity == null, { severity = null }, label = { Text("All severity") })
+                com.uttarooque73.netguard.features.timeline.IncidentSeverity.values().forEach { s ->
+                    FilterChip(severity == s, { severity = if (severity == s) null else s }, label = { Text(s.name) })
+                }
+            }
+            LoadingTextButton(onClick = onExport) { Text("Export incident timeline") }
+        }
+    }
+
+    if (filtered.isEmpty()) {
+        Text("No security events match the current filters.")
+    }
+    filtered.forEach { incident ->
+        val expanded = expandedId == incident.source.id
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(incident.source.title, style = MaterialTheme.typography.titleMedium)
+                Text(incident.type.name + " • " + incident.severity.name + " • " + incident.entity)
+                Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(incident.source.createdAtEpochMs)))
+                Text("What happened", style = MaterialTheme.typography.labelLarge)
+                Text(incident.source.detail)
+                if (expanded) {
+                    Text("Evidence", style = MaterialTheme.typography.labelLarge)
+                    Text(incident.evidence)
+                    Text("Why it matters", style = MaterialTheme.typography.labelLarge)
+                    Text(incident.whyItMatters)
+                    Text("Recommended action", style = MaterialTheme.typography.labelLarge)
+                    Text(incident.recommendedAction)
+                    val previous = incidents.dropWhile { it.source.id != incident.source.id }.drop(1).firstOrNull()
+                    Text("Replay context", style = MaterialTheme.typography.labelLarge)
+                    Text(if (previous == null) "This is the earliest related event in the current local timeline." else "Previous recorded event: " + previous.source.title)
+                }
+                LoadingTextButton(onClick = { expandedId = if (expanded) null else incident.source.id }) {
+                    Text(if (expanded) "Hide investigation details" else "Replay event")
+                }
+            }
+        }
+    }
 }
