@@ -537,3 +537,15 @@ For every feature:
 9. Update this roadmap.
 10. Only then start the next feature.
 
+
+
+## Authentication & Profile — Implemented
+
+- Local device account with sign-up and login.
+- Passwords are never stored in plaintext; authentication uses salted PBKDF2-HMAC-SHA256 password verification.
+- Minimum password length is 8 characters with email/display-name validation.
+- Session state is persisted locally and logout clears the authenticated session.
+- Profile screen supports display-name changes.
+- Profile image selection uses Android's document picker and copies the selected image into app-private storage.
+- Existing NetGuard app-lock/biometric protection remains a separate second protection layer after account authentication.
+- No remote authentication backend is introduced; this is intentionally local-first for the current app architecture.
