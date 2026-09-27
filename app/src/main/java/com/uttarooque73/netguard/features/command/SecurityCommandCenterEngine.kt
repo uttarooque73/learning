@@ -47,9 +47,9 @@ object CommandCenterEngine {
 
     fun investigation(devices: List<DiscoveredDevice>, services: List<DiscoveredService>, findings: List<Finding>, events: List<MonitorEvent>): InvestigationSummary {
         val recommendations = buildList {
-            events.firstOrNull { it.type.name == "NEW_DEVICE" }?.let { add("Inspect newly observed asset \${it.ipAddress} and establish its expected identity.") }
-            events.firstOrNull { it.type.name == "NEW_SERVICE" }?.let { add("Review newly exposed service evidence on \${it.ipAddress}.") }
-            findings.firstOrNull()?.let { add("Open \${it.id} on \${it.ipAddress} and compare its evidence with remediation state.") }
+            events.firstOrNull { it.type.name == "NEW_DEVICE" }?.let { add("Inspect newly observed asset ${it.ipAddress} and establish its expected identity.") }
+            events.firstOrNull { it.type.name == "NEW_SERVICE" }?.let { add("Review newly exposed service evidence on ${it.ipAddress}.") }
+            findings.firstOrNull()?.let { add("Open ${it.id} on ${it.ipAddress} and compare its evidence with remediation state.") }
             if (isEmpty()) add("No immediate investigation lead is present in the stored evidence.")
         }
         return InvestigationSummary(RiskCalculator.score(findings), findings.size, devices.size, services.size, events.size, recommendations.take(4))
@@ -72,8 +72,8 @@ object CommandCenterEngine {
         return ExperimentResult(
             experiment,
             if (observed) ExperimentStatus.REVIEW else ExperimentStatus.PASS,
-            if (observed) "Reachable TCP/\$port (\$name) is present in the existing inventory."
-            else "No reachable TCP/\$port (\$name) service is present in the existing inventory."
+            if (observed) "Reachable TCP/$port ($name) is present in the existing inventory."
+            else "No reachable TCP/$port ($name) service is present in the existing inventory."
         )
     }
 
@@ -81,12 +81,12 @@ object CommandCenterEngine {
         val q = question.lowercase()
         val score = RiskCalculator.score(findings)
         return when {
-            "score" in q || "risk" in q -> "Current score: \$score/100. It is derived from \${findings.size} stored findings. Open Score Explainability to see each contribution."
-            "change" in q || "changed" in q -> if (events.isEmpty()) "No monitoring changes are currently stored." else "\${events.size} monitoring change event(s) are stored. Latest: \${events.last().detail}"
-            "device" in q -> "The current authorized inventory contains \${devices.size} device(s)."
-            "service" in q || "port" in q -> "The current authorized inventory contains \${services.count { it.reachable }} reachable service(s)."
-            "finding" in q -> if (findings.isEmpty()) "No findings are currently stored." else "There are \${findings.size} finding(s). Highest severity: \${findings.minByOrNull { it.severity.ordinal }?.severity}."
-            "network" in q || "wifi" in q -> "Current network: \${network?.ssid ?: "not inspected"}, gateway \${network?.gatewayAddress ?: "unavailable"}, local address \${network?.localAddress ?: "unavailable"}."
+            "score" in q || "risk" in q -> "Current score: $score/100. It is derived from ${findings.size} stored findings. Open Score Explainability to see each contribution."
+            "change" in q || "changed" in q -> if (events.isEmpty()) "No monitoring changes are currently stored." else "${events.size} monitoring change event(s) are stored. Latest: ${events.last().detail}"
+            "device" in q -> "The current authorized inventory contains ${devices.size} device(s)."
+            "service" in q || "port" in q -> "The current authorized inventory contains ${services.count { it.reachable }} reachable service(s)."
+            "finding" in q -> if (findings.isEmpty()) "No findings are currently stored." else "There are ${findings.size} finding(s). Highest severity: ${findings.minByOrNull { it.severity.ordinal }?.severity}."
+            "network" in q || "wifi" in q -> "Current network: ${network?.ssid ?: "not inspected"}, gateway ${network?.gatewayAddress ?: "unavailable"}, local address ${network?.localAddress ?: "unavailable"}."
             else -> "I can answer from stored evidence about the network, devices, services, findings, score, and monitoring changes."
         }
     }
