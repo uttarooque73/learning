@@ -2019,13 +2019,86 @@ private fun AdvancedSecuritySection(
             LoadingButton(onClick = { onExportReport("zip") }) { Text("ZIP") }
         }
 
+        var appSearch by remember { mutableStateOf("") }
+        var showOnlyFindings by remember { mutableStateOf(false) }
+        val filteredApps = apps
+            .filter {
+                appSearch.isBlank() ||
+                    it.appName.contains(appSearch, ignoreCase = true) ||
+                    it.packageName.contains(appSearch, ignoreCase = true)
+            }
+            .filter { !showOnlyFindings || it.evidence.any { evidence ->
+                evidence.contains("debuggable", true) ||
+                    evidence.contains("backup", true) ||
+                    evidence.contains("cleartext", true) ||
+                    evidence.contains("exported", true) ||
+                    evidence.contains("sensitive permissions", true)
+            } }
+            .sortedByDescending { app ->
+                var score = 0
+                if (app.debuggable) score += 3
+                if (app.backupAllowed == true) score += 1
+                if (app.cleartextAllowed == true) score += 2
+                score += app.exportedComponents.coerceAtMost(3)
+                score += app.requestedDangerousPermissions.size
+                score
+            }
+
         Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Installed applications", style = MaterialTheme.typography.titleMedium)
-                Text("Applications analyzed: " + apps.size)
-                apps.take(10).forEach {
-                    Text(it.appName + " — " + it.packageName)
-                    if (it.evidence.isNotEmpty()) Text(it.evidence.joinToString(" "))
+                val findingApps = apps.count { it.debuggable || it.backupAllowed == true || it.cleartextAllowed == true || it.exportedComponents > 0 || it.requestedDangerousPermissions.isNotEmpty() }
+                Text("Analyzed: ${apps.size}  •  Apps needing review: $findingApps")
+                androidx.compose.material3.OutlinedTextField(
+                    value = appSearch,
+                    onValueChange = { appSearch = it },
+                    label = { Text("Search applications") },
+                    placeholder = { Text("App name or package") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !showOnlyFindings,
+                        onClick = { showOnlyFindings = false },
+                        label = { Text("All") }
+                    )
+                    FilterChip(
+                        selected = showOnlyFindings,
+                        onClick = { showOnlyFindings = true },
+                        label = { Text("Needs review") }
+                    )
+                }
+                if (filteredApps.isEmpty()) {
+                    Text(
+                        if (apps.isEmpty()) "Run the security audit to inspect installed applications."
+                        else "No applications match the current filter."
+                    )
+                } else {
+                    filteredApps.take(20).forEach { app ->
+                        val issues = buildList {
+                            if (app.debuggable) add("Debuggable")
+                            if (app.backupAllowed == true) add("Backup enabled")
+                            if (app.cleartextAllowed == true) add("Cleartext allowed")
+                            if (app.exportedComponents > 0) add("${app.exportedComponents} exported")
+                            if (app.requestedDangerousPermissions.isNotEmpty()) add("${app.requestedDangerousPermissions.size} sensitive permissions")
+                        }
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(app.appName, style = MaterialTheme.typography.titleSmall)
+                                Text(app.packageName, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    if (issues.isEmpty()) "No flagged posture signals"
+                                    else issues.joinToString(" • "),
+                                    color = if (issues.isEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                )
+                                if (app.targetSdk != null) Text("Target SDK: ${app.targetSdk}")
+                            }
+                        }
+                    }
+                    if (filteredApps.size > 20) {
+                        Text("Showing 20 of ${filteredApps.size}. Refine the search to inspect more.")
+                    }
                 }
             }
         }
