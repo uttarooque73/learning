@@ -50,9 +50,9 @@ fun SecurityCommandCenterScreen(
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Security Detective", style = MaterialTheme.typography.titleMedium)
-                Text("Score \${summary.score}/100 • \${summary.deviceCount} devices • \${summary.serviceCount} services • \${summary.findingCount} findings")
-                Text("Stored changes: \${summary.changeCount}")
-                summary.recommendations.forEach { Text("→ \$it") }
+                Text("Score ${summary.score}/100 • ${summary.deviceCount} devices • ${summary.serviceCount} services • ${summary.findingCount} findings")
+                Text("Stored changes: ${summary.changeCount}")
+                summary.recommendations.forEach { Text("→ $it") }
             }
         }
 
@@ -61,7 +61,7 @@ fun SecurityCommandCenterScreen(
                 Text("What Changed?", style = MaterialTheme.typography.titleMedium)
                 if (monitorEvents.isEmpty()) Text("No monitoring changes are currently stored.")
                 monitorEvents.takeLast(8).reversed().forEach {
-                    Text("\${it.type.name} — \${it.ipAddress}")
+                    Text("${it.type.name} — ${it.ipAddress}")
                     Text(it.detail)
                 }
             }
@@ -73,13 +73,13 @@ fun SecurityCommandCenterScreen(
                 if (network == null) {
                     Text("Inspect the network to build the asset graph.")
                 } else {
-                    Text("Network → \${network.gatewayAddress ?: "gateway unavailable"}")
+                    Text("Network → ${network.gatewayAddress ?: "gateway unavailable"}")
                     devices.take(8).forEach { device ->
                         val deviceServices = services.filter { it.ipAddress == device.ipAddress }
-                        Text("  ↓ \${device.ipAddress} → \${deviceServices.joinToString { "\${it.protocol}/\${it.port}" }.ifBlank { "no observed services" }}")
+                        Text("  ↓ ${device.ipAddress} → ${deviceServices.joinToString { "${it.protocol}/${it.port}" }.ifBlank { "no observed services" }}")
                         deviceServices.take(4).forEach { service ->
                             findings.filter { it.ipAddress == device.ipAddress }.take(3).forEach { finding ->
-                                Text("      ↓ \${service.serviceName} → \${finding.id}")
+                                Text("      ↓ ${service.serviceName} → ${finding.id}")
                             }
                         }
                     }
@@ -90,13 +90,13 @@ fun SecurityCommandCenterScreen(
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Why did my score change?", style = MaterialTheme.typography.titleMedium)
-                Text("Current score: \${summary.score}/100")
+                Text("Current score: ${summary.score}/100")
                 if (contributions.isEmpty()) {
                     Text("No finding deductions are currently contributing to the score.")
                 } else {
                     contributions.forEach {
-                        Text("\${it.findingId} — -\${it.deduction} points — \${it.title}")
-                        Text("Asset: \${it.asset} • Severity: \${it.severity}")
+                        Text("${it.findingId} — -${it.deduction} points — ${it.title}")
+                        Text("Asset: ${it.asset} • Severity: ${it.severity}")
                     }
                 }
             }
@@ -131,7 +131,7 @@ fun SecurityCommandCenterScreen(
                     }
                 }
                 experimentResult?.let {
-                    Text("\${it.status}: \${it.experiment.title}")
+                    Text("${it.status}: ${it.experiment.title}")
                     Text(it.evidence)
                 }
             }
