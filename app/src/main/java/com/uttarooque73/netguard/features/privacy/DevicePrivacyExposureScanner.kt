@@ -93,13 +93,14 @@ object DevicePrivacyExposureScanner {
             )
         }
 
-        val score = (100 - findings.sumOf {
-            when (it.level) {
+        val deductions = findings.fold(0) { total, finding ->
+            total + when (finding.level) {
                 PrivacyExposureLevel.HIGH -> 12
                 PrivacyExposureLevel.REVIEW -> 4
                 PrivacyExposureLevel.GOOD -> 0
             }
-        }.toInt()).coerceIn(0, 100)
+        }
+        val score = (100 - deductions).coerceIn(0, 100)
 
         return PrivacyExposureReport(score, findings.sortedBy { it.level.ordinal }, apps.size, System.currentTimeMillis())
     }
