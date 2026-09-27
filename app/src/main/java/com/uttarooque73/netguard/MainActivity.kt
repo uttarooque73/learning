@@ -1242,14 +1242,18 @@ private fun MonitoringSection(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Monitoring & alerts", style = MaterialTheme.typography.titleMedium)
-            Text("Checks the existing authorized inventory for changes.")
+            Text("Monitoring", style = MaterialTheme.typography.titleMedium)
+            Text("Compares the current authorized inventory and network context with the saved monitoring baseline. It does not perform a new network scan.")
             Button(onClick = onCheckChanges, enabled = !monitoring) {
                 Text(if (monitoring) "Checking..." else "Check for changes")
             }
-            Text("Events: " + events.size)
-            events.takeLast(5).reversed().forEach { event ->
-                Text(event.type.name + " — " + event.ipAddress + " — " + event.detail)
+            Text("Changes detected: " + events.size)
+            if (events.isEmpty()) {
+                Text("No changes detected since the saved baseline.")
+            } else {
+                events.takeLast(5).reversed().forEach { event ->
+                    Text(event.type.name + " — " + event.ipAddress + " — " + event.detail)
+                }
             }
         }
     }
