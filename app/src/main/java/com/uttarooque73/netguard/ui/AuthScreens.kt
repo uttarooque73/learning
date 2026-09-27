@@ -117,6 +117,12 @@ fun ProfileScreen(
         Text("Account: " + profile.email)
         OutlinedTextField(displayName, onDisplayNameChange, label = { Text("Display name") }, modifier = Modifier.fillMaxWidth())
         Button(onClick = onSelectImage) { Text("Choose profile image") }
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Photo storage", style = MaterialTheme.typography.titleMedium)
+                Text("NetGuard uses Android's system photo picker and stores the selected image in app-private storage. No broad storage permission is required.")
+            }
+        }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
         TextButton(onClick = onLogout) { Text("Log out") }
