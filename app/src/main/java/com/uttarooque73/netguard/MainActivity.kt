@@ -76,6 +76,7 @@ import com.uttarooque73.netguard.monitor.MonitorEvent
 import com.uttarooque73.netguard.monitor.MonitorStore
 import com.uttarooque73.netguard.monitor.MonitorBaselineStore
 import com.uttarooque73.netguard.monitor.MonitorRunner
+import com.uttarooque73.netguard.monitor.MonitorEngine
 import com.uttarooque73.netguard.compliance.BaselineEvaluator
 import com.uttarooque73.netguard.compliance.BaselineResult
 import com.uttarooque73.netguard.compliance.BaselineStore
@@ -600,11 +601,18 @@ class MainActivity : FragmentActivity() {
             val previousDeviceIps = monitorBaselineStore.loadDeviceIps()
             val previousDevices = previousDeviceIps.map { DiscoveredDevice(it, reachable = true) }
             val previousServices = monitorBaselineStore.loadServices()
-            val events = MonitorRunner.check(previousDevices, devices, previousServices, services)
+            val previousNetwork = monitorBaselineStore.loadNetwork()
+            val currentNetwork = networkInfo
+
+            val inventoryEvents = MonitorRunner.check(previousDevices, devices, previousServices, services)
+            val networkEvents = currentNetwork?.let { MonitorEngine.compareNetwork(previousNetwork, it) }.orEmpty()
+            val events = networkEvents + inventoryEvents
+
             monitorEvents = (monitorEvents + events).takeLast(100)
             monitorStore.save(monitorEvents)
             monitorBaselineStore.saveDevices(devices)
             monitorBaselineStore.saveServices(services)
+            currentNetwork?.let(monitorBaselineStore::saveNetwork)
             monitoring = false
         }
     }
