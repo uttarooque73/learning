@@ -4,12 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,10 +38,27 @@ fun IntelligenceScreen(
     val references = remember { mutableStateMapOf<String, List<VulnerabilityReference>>() }
     val loading = remember { mutableStateMapOf<String, Boolean>() }
 
+    val highConfidenceCandidates = candidates.count { it.confidence.equals("HIGH", true) }
+    val recentRisk = trends.lastOrNull()?.score
+    val previousRisk = trends.dropLast(1).lastOrNull()?.score
+
     FeatureListScreen(
         "Security Intelligence",
         "Asset fingerprints, topology, DNS posture, vulnerability candidates and risk history."
     ) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Investigation summary", style = MaterialTheme.typography.titleMedium)
+                Text("Assets: ${devices.size} • Services: ${services.size} • Candidates: ${candidates.size}")
+                Text("High-confidence candidates: $highConfidenceCandidates")
+                if (recentRisk != null) {
+                    val delta = if (previousRisk != null) recentRisk - previousRisk else null
+                    Text("Current risk: $recentRisk/100" + (delta?.let { " • change " + (if (it >= 0) "+" else "") + it } ?: ""))
+                } else {
+                    Text("Risk trend: no historical points yet")
+                }
+            }
+        }
         devices.forEach { device ->
             val fingerprint = AssetIntelligence.fingerprint(device, services)
             val identity = DeviceIdentityEngine.identify(device, services)
