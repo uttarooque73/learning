@@ -1085,6 +1085,9 @@ fun NetGuardApp(
     onRemoveContact: (String) -> Unit,
     callProtectionLogs: List<com.uttarooque73.netguard.security.CallProtectionLog>,
     blockedNumbers: Set<String>,
+    callLogError: String?,
+    onRequestCallLogPermission: () -> Unit,
+    callLogPermissionGranted: Boolean,
     onBlockNumber: (String) -> Unit,
     onUnblockNumber: (String) -> Unit,
     onClearCallLogs: () -> Unit,
@@ -1124,7 +1127,7 @@ fun NetGuardApp(
             } else if (selectedScreen == Screen.Contacts) {
                 ContactNumbersScreen(savedContacts, deviceContacts, contactError, onAddContact, onRemoveContact)
             } else if (selectedScreen == Screen.CallProtection) {
-                CallProtectionScreen(callProtectionLogs, blockedNumbers, onBlockNumber, onUnblockNumber, onClearCallLogs, onEnableCallScreening, callScreeningEnabled)
+                CallProtectionScreen(callProtectionLogs, blockedNumbers, onBlockNumber, onUnblockNumber, onClearCallLogs, onEnableCallScreening, callScreeningEnabled, callLogError, onRequestCallLogPermission, callLogPermissionGranted)
             } else Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
