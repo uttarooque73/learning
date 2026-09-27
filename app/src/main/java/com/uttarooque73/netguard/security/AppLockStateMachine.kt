@@ -20,6 +20,12 @@ object AppLockStateMachine {
         return AppLockSession(AppLockState.UNLOCKED)
     }
 
+    fun isCooldownActive(session: AppLockSession, nowEpochMs: Long): Boolean =
+        session.state == AppLockState.COOLDOWN && nowEpochMs < session.cooldownUntilEpochMs
+
+    fun remainingCooldownMs(session: AppLockSession, nowEpochMs: Long): Long =
+        if (isCooldownActive(session, nowEpochMs)) session.cooldownUntilEpochMs - nowEpochMs else 0L
+
     fun biometricFailure(session: AppLockSession, nowEpochMs: Long): AppLockSession {
         if (session.state == AppLockState.COOLDOWN && nowEpochMs < session.cooldownUntilEpochMs) return session
         val attempts = session.failedAttempts + 1
