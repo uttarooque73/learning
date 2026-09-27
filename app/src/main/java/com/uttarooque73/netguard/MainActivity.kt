@@ -486,7 +486,7 @@ class MainActivity : FragmentActivity() {
                 findingStore.save(findings)
                 remediationStore.save(remediationRecords)
                 verificationStore.save(verificationResults)
-                inventoryStore.saveNetwork(snapshot.network)
+                snapshot.network?.let(inventoryStore::saveNetwork)
                 inventoryStore.saveDevices(snapshot.devices)
 
                 recordTimeline(
