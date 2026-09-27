@@ -324,7 +324,14 @@ class MainActivity : FragmentActivity() {
                 riskTrend = riskTrend,
                 customPolicyEvaluations = customPolicyEvaluations,
                 onRunCommandCenterProfile = ::runCommandCenterProfile,
-                onExportInvestigation = ::exportInvestigationPackage
+                onExportInvestigation = ::exportInvestigationPackage,
+                userProfile = userProfile,
+                profileName = profileName,
+                selectedProfileImage = selectedProfileImage,
+                onProfileNameChange = { profileName = it },
+                onSelectProfileImage = { profileImageLauncher.launch("image/*") },
+                onSaveProfile = ::saveUserProfile,
+                onLogout = ::logoutUser
                 )
             }
         }
@@ -554,6 +561,24 @@ class MainActivity : FragmentActivity() {
             },
             "Share NetGuard investigation package"
         ))
+    }
+
+    private fun saveUserProfile() {
+        runCatching {
+            var imagePath = userProfile?.imagePath
+            selectedProfileImage?.let { userAccountStore.deleteProfileImage(imagePath); imagePath = userAccountStore.saveProfileImage(it) }
+            userProfile = userAccountStore.updateProfile(profileName, imagePath)
+            selectedProfileImage = null
+            authError = null
+        }.onFailure { authError = it.message ?: "Unable to save profile." }
+    }
+
+    private fun logoutUser() {
+        userAccountStore.logout()
+        authenticated = false
+        selectedScreen = Screen.Dashboard
+        authPassword = ""
+        authError = null
     }
 
     private fun launchAuditPackageImport() {
@@ -919,7 +944,14 @@ fun NetGuardApp(
     riskTrend: List<RiskTrendPoint>,
     customPolicyEvaluations: List<CustomPolicyEvaluation>,
     onRunCommandCenterProfile: (AuditProfile) -> Unit,
-    onExportInvestigation: () -> Unit
+    onExportInvestigation: () -> Unit,
+    userProfile: UserProfile?,
+    profileName: String,
+    selectedProfileImage: android.net.Uri?,
+    onProfileNameChange: (String) -> Unit,
+    onSelectProfileImage: () -> Unit,
+    onSaveProfile: () -> Unit,
+    onLogout: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -931,7 +963,7 @@ fun NetGuardApp(
                     Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
                     HorizontalDivider()
                     val screens = listOf(
-                        Screen.Dashboard, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
+                        Screen.Dashboard, Screen.Profile, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
                         Screen.Findings, Screen.Remediation, Screen.Monitoring, Screen.Baseline,
                         Screen.Mobile, Screen.Wifi, Screen.Web, Screen.Policies, Screen.Timeline,
                         Screen.Reports, Screen.Administration, Screen.Learning, Screen.Advanced
@@ -948,7 +980,9 @@ fun NetGuardApp(
             }
         ) {
             Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { TextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
-            Dashboard(
+            if (selectedScreen == Screen.Profile && userProfile != null) {
+                ProfileScreen(userProfile!!, profileName, selectedProfileImage, authError, onProfileNameChange, onSelectProfileImage, onSaveProfile, onLogout)
+            } else Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
                 devices = devices,
