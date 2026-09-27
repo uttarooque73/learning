@@ -29,6 +29,8 @@ class UserContactStore(context: Context) {
         return contact
     }
 
+    fun findSavedByNumber(number: String): SavedContact? = load().firstOrNull { normalizePhone(it.phoneNumber) == normalizePhone(number) }
+
     fun remove(id: String) {
         prefs.edit().putStringSet(
             key,
@@ -37,6 +39,8 @@ class UserContactStore(context: Context) {
     }
 
     companion object {
+        fun normalizePhone(number: String): String = number.filter { it.isDigit() }.takeLast(15)
+
         fun readPhoneContacts(context: Context): List<SavedContact> {
             val result = mutableListOf<SavedContact>()
             val projection = arrayOf(
