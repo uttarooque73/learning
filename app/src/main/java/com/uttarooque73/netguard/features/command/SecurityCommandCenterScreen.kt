@@ -16,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import com.uttarooque73.netguard.report.AuditHistoryStore
 import com.uttarooque73.netguard.features.reporting.InvestigationPackageExporter
@@ -43,6 +45,11 @@ fun SecurityCommandCenterScreen(
     var experimentResult by remember { mutableStateOf<ExperimentResult?>(null) }
     var question by remember { mutableStateOf("") }
     var answer by remember { mutableStateOf<String?>(null) }
+    var ollamaEndpoint by remember { mutableStateOf("http://10.0.2.2:11434") }
+    var ollamaModel by remember { mutableStateOf("qwen3:4b") }
+    var ollamaAnswer by remember { mutableStateOf<String?>(null) }
+    var ollamaRunning by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val summary = CommandCenterEngine.investigation(devices, services, findings, monitorEvents)
     val contributions = CommandCenterEngine.scoreContributions(findings)
@@ -222,6 +229,32 @@ fun SecurityCommandCenterScreen(
                 Text("Exports selected recent snapshots, snapshot diff, and timeline evidence as a bounded investigation bundle.")
                 Button(onClick = onExportInvestigation) { Text("Export investigation package") }
                 Text("Stored snapshots: " + history.size)
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Local Ollama Analyst", style = MaterialTheme.typography.titleMedium)
+                Text("Optional local-model analysis. Evidence is supplied as context; the model is instructed not to invent facts.")
+                OutlinedTextField(value = ollamaEndpoint, onValueChange = { ollamaEndpoint = it }, label = { Text("Ollama endpoint") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = ollamaModel, onValueChange = { ollamaModel = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth())
+                Button(
+                    enabled = !ollamaRunning && question.isNotBlank(),
+                    onClick = {
+                        ollamaRunning = true
+                        scope.launch {
+                            val contextText = LocalEvidenceAnalyst.buildContext(network, devices, services, findings)
+                            val result = LocalOllamaClient.generate(
+                                ollamaEndpoint,
+                                ollamaModel,
+                                LocalEvidenceAnalyst.prompt(question, contextText)
+                            )
+                            ollamaAnswer = result.text
+                            ollamaRunning = false
+                        }
+                    }
+                ) { Text(if (ollamaRunning) "Analyzing..." else "Ask local model") }
+                ollamaAnswer?.let { Text(it) }
             }
         }
 
