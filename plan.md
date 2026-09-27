@@ -416,6 +416,17 @@ Phase 12 — hardening and automated release validation complete:
 - bounded discovery/service audit behavior documented
 - CI validation passed for unit tests, lint, debug APK assembly, and release build
 
+### Ad & Tracker Guard verification update
+
+**Current state:** code exists for a local VPN/DNS blocker and a reusable deterministic domain-filter component. The blocker is not a universal ad remover: first-party/in-page ads, direct-IP traffic, and encrypted DNS (DoH/DoT) can bypass DNS-domain filtering. Physical-device validation is still required.
+
+**Verified code improvements:**
+- reusable `AdBlockFilter` used by the VPN DNS path
+- unit coverage for enabled, disabled, subdomain, and lookalike-domain matching
+- existing local VPN integration retained
+
+**Pending:** physical Android-device verification of VPN establishment, DNS interception, blocked-domain resolution behavior, IPv6/alternate DNS transports, and real-world ad/tracker coverage.
+
 Remaining release work:
 - physical-device compatibility testing across supported Android versions
 - runtime permission review on target devices
