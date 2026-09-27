@@ -136,6 +136,11 @@ import com.uttarooque73.netguard.features.policy.CustomPolicyRuleType
 import com.uttarooque73.netguard.monitor.ScheduledMonitorConfigStore
 import com.uttarooque73.netguard.monitor.ScheduledMonitorScheduler
 import com.uttarooque73.netguard.security.AppLockPolicyStore
+import com.uttarooque73.netguard.security.UserAccountStore
+import com.uttarooque73.netguard.security.UserProfile
+import com.uttarooque73.netguard.ui.LoginScreen
+import com.uttarooque73.netguard.ui.SignUpScreen
+import com.uttarooque73.netguard.ui.ProfileScreen
 
 class MainActivity : FragmentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
@@ -185,6 +190,18 @@ class MainActivity : FragmentActivity() {
     private var selectedPolicyProfile by mutableStateOf("Home")
     private lateinit var timelineStore: SecurityTimelineStore
     private lateinit var appLockPolicyStore: AppLockPolicyStore
+    private lateinit var userAccountStore: UserAccountStore
+    private var authenticated by mutableStateOf(false)
+    private var showSignUp by mutableStateOf(false)
+    private var authEmail by mutableStateOf("")
+    private var authPassword by mutableStateOf("")
+    private var authConfirmPassword by mutableStateOf("")
+    private var authDisplayName by mutableStateOf("")
+    private var authError by mutableStateOf<String?>(null)
+    private var userProfile by mutableStateOf<UserProfile?>(null)
+    private var profileName by mutableStateOf("")
+    private var selectedProfileImage by mutableStateOf<android.net.Uri?>(null)
+    private val profileImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri -> selectedProfileImage = uri }
     private var appLocked by mutableStateOf(false)
     private var authenticating = false
     private var backgroundedAtElapsedMs = 0L
@@ -209,6 +226,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        userAccountStore = UserAccountStore(this)
+        authenticated = userAccountStore.isLoggedIn()
+        userProfile = userAccountStore.loadProfile()
+        profileName = userProfile?.displayName.orEmpty()
         appLockPolicyStore = AppLockPolicyStore(this)
         appLocked = appLockPolicyStore.load().enabled
         inventoryStore = NetworkInventoryStore(this)
@@ -240,7 +261,13 @@ class MainActivity : FragmentActivity() {
         devices = inventoryStore.loadDevices()
         mobileSecurity = MobileSecurityAudit.inspect(this)
         setContent {
-            if (appLocked) {
+            if (!authenticated) {
+                if (showSignUp || !userAccountStore.exists()) {
+                    SignUpScreen(authDisplayName, authEmail, authPassword, authConfirmPassword, authError, { authDisplayName = it }, { authEmail = it }, { authPassword = it }, { authConfirmPassword = it }, { authError = if (authPassword != authConfirmPassword) "Passwords do not match." else userAccountStore.create(authEmail, authPassword.toCharArray(), authDisplayName).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; authConfirmPassword = ""; null }, { it.message ?: "Unable to create account." }) }, { showSignUp = false; authError = null })
+                } else {
+                    LoginScreen(authEmail, authPassword, authError, { authEmail = it }, { authPassword = it }, { userAccountStore.login(authEmail, authPassword.toCharArray()).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; null }, { authError = it.message ?: "Login failed." }) }, { showSignUp = true; authError = null })
+                }
+            } else if (appLocked) {
                 LockScreen(onUnlock = ::authenticateApp)
             } else {
                 NetGuardApp(
