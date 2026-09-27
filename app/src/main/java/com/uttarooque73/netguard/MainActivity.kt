@@ -522,6 +522,22 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private fun observeWifiTrust() {
+        val info = networkInfo ?: run {
+            wifiTrustResult = WifiTrustResult(
+                com.uttarooque73.netguard.features.wifi.WifiTrustStatus.UNKNOWN,
+                "No current network inventory is available. Inspect the current network first.",
+                listOf("Inspect the current network, then observe Wi-Fi Trust again.")
+            )
+            return
+        }
+        val current = WifiObservation(info.ssid, info.bssid, info.gatewayAddress, info.wifiSecurity)
+        val previous = wifiObservationStore.load()
+        wifiTrustResult = WifiTrustEngine.compare(previous, current)
+        wifiObservationStore.save(current)
+        recordTimeline("wifi", "Wi-Fi trust observation", wifiTrustResult?.evidence ?: "Wi-Fi observed")
+    }
+
     private fun runAdvancedAudit(url: String?) {
         lifecycleScope.launch {
             appSecurityChecks = runCatching { InstalledAppSecurityAudit.inspect(this@MainActivity) }.getOrDefault(emptyList())
@@ -1032,7 +1048,7 @@ private fun Dashboard(
             Screen.Monitoring -> FeatureListScreen("Monitoring", "Local inventory change monitoring.") { MonitoringSection(monitoring, monitorEvents, onCheckChanges) }
             Screen.Baseline -> FeatureListScreen("Baseline", "Evidence-backed local security baseline evaluation.") { BaselineSection(baselineResults, onEvaluateBaseline) }
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
-            Screen.Wifi -> WifiFeatureScreen(wifiTrustResult)
+            Screen.Wifi -> WifiTrustPage(wifiTrustResult, ::observeWifiTrust)
             Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
             Screen.Policies -> PolicyFeatureScreen(policyResults, selectedPolicyProfile, onSelectPolicyProfile)
             Screen.Timeline -> TimelineFeatureScreen(timelineEvents)
@@ -1343,6 +1359,37 @@ private fun AdministrationSection(
             }
             Text("Administrative events: " + events.size)
             events.takeLast(5).reversed().forEach { Text(it.type.name + " — " + it.subject) }
+        }
+    }
+}
+
+@Composable
+private fun WifiTrustPage(result: WifiTrustResult?, onObserve: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Wi-Fi Trust", style = MaterialTheme.typography.headlineSmall)
+        Text("Track changes in the observed Wi-Fi identity.")
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Status: " + (result?.status ?: "NOT AUDITED"), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    result?.evidence
+                        ?: "No observation yet. Observe the current Wi-Fi identity to create a baseline."
+                )
+                Button(onClick = onObserve) {
+                    Text(if (result == null) "Observe current Wi-Fi" else "Recheck Wi-Fi")
+                }
+                result?.remediation?.takeIf { it.isNotEmpty() }?.let { guidance ->
+                    Text("Guidance", style = MaterialTheme.typography.titleSmall)
+                    guidance.forEachIndexed { index, item ->
+                        Text((index + 1).toString() + ". " + item)
+                    }
+                }
+            }
         }
     }
 }
