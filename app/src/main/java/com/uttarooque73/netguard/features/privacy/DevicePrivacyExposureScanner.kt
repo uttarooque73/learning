@@ -99,7 +99,7 @@ object DevicePrivacyExposureScanner {
                 PrivacyExposureLevel.REVIEW -> 4
                 PrivacyExposureLevel.GOOD -> 0
             }
-        }).coerceIn(0, 100)
+        }.toInt()).coerceIn(0, 100)
 
         return PrivacyExposureReport(score, findings.sortedBy { it.level.ordinal }, apps.size, System.currentTimeMillis())
     }
