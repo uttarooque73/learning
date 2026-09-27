@@ -2,7 +2,7 @@
 
 ## Current implementation
 
-Phase 1 uses a single Android application module with Jetpack Compose UI and a small domain model package. Network access and audit permissions are deliberately not requested yet.
+The current implementation uses a single Android application module with Jetpack Compose UI and domain/security feature packages. Runtime location permissions are requested when network/Wi-Fi inspection requires them; the app otherwise follows least-privilege access.
 
 ## Planned layers
 
@@ -13,7 +13,7 @@ Application / ViewModels
  ↓
 Domain models + use cases
  ↓
-Discovery / Audit / Remediation / Verification engines
+Discovery / Audit / Remediation / Verification / Monitoring / Reporting engines
  ↓
 Repositories
  ↓
