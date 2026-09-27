@@ -263,7 +263,7 @@ class MainActivity : FragmentActivity() {
         callProtectionLogs = callProtectionStore.logs()
         blockedNumbers = callProtectionStore.blockedNumbers()
         savedContacts = userContactStore.load()
-        authenticated = userAccountStore.isLoggedIn()
+        authenticated = userAccountStore.isLoggedIn() || userAccountStore.isGuest()
         userProfile = userAccountStore.loadProfile()
         profileName = userProfile?.displayName.orEmpty()
         appLockPolicyStore = AppLockPolicyStore(this)
@@ -299,7 +299,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             if (!authenticated) {
                 if (showSignUp || !userAccountStore.exists()) {
-                    SignUpScreen(authDisplayName, authEmail, authPassword, authConfirmPassword, authError, { authDisplayName = it }, { authEmail = it }, { authPassword = it }, { authConfirmPassword = it }, { authError = if (authPassword != authConfirmPassword) "Passwords do not match." else userAccountStore.create(authEmail, authPassword.toCharArray(), authDisplayName).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; authConfirmPassword = ""; null }, { it.message ?: "Unable to create account." }) }, { showSignUp = false; authError = null })
+                    SignUpScreen(authDisplayName, authEmail, authPassword, authConfirmPassword, authError, { authDisplayName = it }, { authEmail = it }, { authPassword = it }, { authConfirmPassword = it }, { authError = if (authPassword != authConfirmPassword) "Passwords do not match." else userAccountStore.create(authEmail, authPassword.toCharArray(), authDisplayName).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; authConfirmPassword = ""; null }, { it.message ?: "Unable to create account." }) }, { showSignUp = false; authError = null }, { userAccountStore.enterGuestMode(); authenticated = true; authError = null })
                 } else {
                     LoginScreen(authEmail, authPassword, authError, { authEmail = it }, { authPassword = it }, { userAccountStore.login(authEmail, authPassword.toCharArray()).fold({ userProfile = it; profileName = it.displayName; authenticated = true; authPassword = ""; null }, { authError = it.message ?: "Login failed." }) }, { showSignUp = true; authError = null })
                 }
