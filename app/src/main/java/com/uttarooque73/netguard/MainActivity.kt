@@ -1549,6 +1549,20 @@ private fun Dashboard(
                 }
 
 
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Ad & Tracker Guard", style = MaterialTheme.typography.titleLarge)
+                        Text("Block configured advertising and tracker domains using NetGuard's local DNS VPN protection.")
+                        Text("Status: " + if (com.uttarooque73.netguard.vpn.NetGuardVpnService.isRunning) "Protection active" else "Protection inactive")
+                        LoadingButton(
+                            onClick = { onSelectScreen(Screen.AdTrackerGuard) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Open Ad & Tracker Guard")
+                        }
+                    }
+                }
+
                 val consumerPosture = ConsumerSecurityEngine.posture(findings, mobileSecurity, networkInfo, auditHistory.lastOrNull()?.createdAtEpochMs ?: 0L)
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
