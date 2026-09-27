@@ -446,7 +446,14 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun launchAuditPackageImport() {
-        auditPackageLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Import audit package")
+            .setMessage("Importing replaces the current audit view with the selected package and saves it to local audit history. Continue?")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue") { _, _ ->
+                auditPackageLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+            }
+            .show()
     }
 
     private fun importAuditPackage(uri: android.net.Uri) {
