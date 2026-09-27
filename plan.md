@@ -165,6 +165,94 @@ Scores must be traceable to actual findings rather than being an opaque rating.
 
 **Deliverable:** production-ready release candidate and security test report.
 
+
+
+---
+
+## Phase 13 — Security Command Center & Attack-Surface Intelligence
+
+Turn NetGuard from a collection of audit screens into an investigation-oriented defensive security console.
+
+### 13.1 Attack Surface Map
+
+- Visualize the current authorized network as devices → services → findings.
+- Show each asset's exposed ports and detected service/product candidates.
+- Highlight assets with newly introduced exposure since the previous baseline.
+- Allow users to open a device and drill down into its evidence.
+
+### 13.2 Exposure Diff
+
+- Compare two authorized audit snapshots.
+- Show added/removed/changed devices.
+- Show newly exposed and closed services.
+- Show finding changes and remediation state changes.
+- Generate a concise "what changed?" investigation summary.
+
+### 13.3 Asset Security Profile
+
+For every discovered asset, maintain a local security profile containing:
+
+- identity and discovery history
+- observed services
+- product candidates and evidence
+- findings
+- remediation state
+- verification history
+- first-seen/last-seen timestamps
+- trust/change history
+
+### 13.4 Evidence Explorer
+
+- Present the raw evidence behind every finding.
+- Explain exactly which observation triggered the rule.
+- Show confidence and applicability state separately.
+- Distinguish observed facts, inferred metadata, candidate intelligence, and verified conclusions.
+- Prevent unsupported vulnerability/version claims from appearing as confirmed facts.
+
+### 13.5 Investigation Timeline
+
+- Correlate network changes, service changes, findings, remediation, verification, policy evaluation, and Wi-Fi trust events.
+- Group related events into an investigation view.
+- Support filtering by asset, event type, severity, and time range.
+
+### 13.6 Safe Audit Profiles
+
+Add explicit user-selectable audit profiles:
+
+- **Quick Check** — minimal battery/network impact.
+- **Standard Audit** — normal authorized discovery and service checks.
+- **Deep Audit** — broader supported checks with clear resource warnings.
+
+Every profile must remain within the product's defensive authorization boundary and must not introduce stealth, credential attacks, exploitation, brute force, or access-control bypass.
+
+### 13.7 Security Score Explainability
+
+Replace a score-only experience with:
+
+- score contribution by finding
+- severity/confidence contribution
+- unresolved vs verified findings
+- score change since previous audit
+- top contributing evidence
+- explicit indication when evidence is insufficient
+
+The score must remain deterministic and traceable to stored evidence.
+
+### 13.8 Local Investigation Packages
+
+Allow a user to export a bounded investigation package containing:
+
+- selected audit snapshots
+- relevant asset history
+- findings and evidence
+- remediation/verification history
+- timeline events
+- policy/baseline results
+
+Packages must be versioned, size-bounded, validated on import, and remain local unless explicitly shared by the user.
+
+**Deliverable:** an investigation-oriented Security Command Center that makes NetGuard useful not only for running audits, but also for understanding and investigating security changes over time.
+
 ---
 
 ## Core Architecture
@@ -388,6 +476,21 @@ Status legend:
 - **App protection:** Android Keystore AES-GCM secure storage and app-lock policy with biometric support.
 - **Audit package import:** bounded, versioned ZIP importer with validation, limits, persistence, and active-audit restoration.
 - **Dedicated UI:** major capabilities have separate navigation destinations; the Overview dashboard is intentionally limited to posture and quick actions.
+
+### Phase 13 — Security Command Center
+
+**Status: Planned**
+
+| Feature | Status | Scope |
+|---|---|---|
+| Attack Surface Map | **Planned** | Device/service/finding relationship visualization |
+| Exposure Diff | **Planned** | Snapshot-to-snapshot security change analysis |
+| Asset Security Profiles | **Planned** | Persistent per-asset evidence and history |
+| Evidence Explorer | **Planned** | Evidence-first finding investigation |
+| Investigation Timeline | **Planned** | Correlated security event investigation |
+| Safe Audit Profiles | **Planned** | Quick, Standard, and Deep authorized audit modes |
+| Security Score Explainability | **Planned** | Traceable score contributions and change explanation |
+| Local Investigation Packages | **Planned** | Bounded, versioned investigation export/import |
 
 ### Current implementation backlog
 
