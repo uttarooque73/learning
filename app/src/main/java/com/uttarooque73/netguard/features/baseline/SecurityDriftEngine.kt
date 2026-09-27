@@ -22,7 +22,8 @@ data class TrustedSecurityBaselineSnapshot(
     val gateway: String?,
     val deviceKeys: List<String>,
     val serviceKeys: List<String>,
-    val appKeys: List<String>
+    val appKeys: List<String>,
+    val appSecurityKeys: List<String> = emptyList()
 )
 
 object SecurityDriftEngine {
@@ -31,7 +32,8 @@ object SecurityDriftEngine {
             now, network?.ssid, network?.bssid, network?.gatewayAddress,
             devices.map { it.ipAddress }.sorted(),
             services.map { it.ipAddress + "|" + it.protocol + "|" + it.port }.sorted(),
-            apps.map { it.packageName + "|" + (it.versionCode ?: 0L) }.sorted()
+            apps.map { it.packageName + "|" + (it.versionCode ?: 0L) }.sorted(),
+            apps.map { it.packageName + "|" + it.requestedDangerousPermissions.sorted().joinToString(",") + "|" + it.debuggable + "|" + it.cleartextAllowed + "|" + it.backupAllowed + "|" + it.exportedComponents }.sorted()
         )
 
     fun compare(before: TrustedSecurityBaselineSnapshot, after: TrustedSecurityBaselineSnapshot): List<SecurityDrift> {
@@ -46,6 +48,12 @@ object SecurityDriftEngine {
         val afterApps = after.appKeys.map { it.substringBefore("|") }.toSet()
         (afterApps - beforeApps).forEach { out += SecurityDrift("app-added-" + it, "APP", "New application observed", "Not present in trusted baseline", it, "REVIEW", "Review the application's source, permissions and security posture.") }
         (beforeApps - afterApps).forEach { out += SecurityDrift("app-removed-" + it, "APP", "Application no longer installed", it, "Not currently installed", "INFO", "Confirm the removal was intentional.") }
+        val beforeSecurity = before.appSecurityKeys.associate { it.substringBefore("|") to it.substringAfter("|") }
+        after.appSecurityKeys.forEach { key ->
+            val pkg = key.substringBefore("|")
+            val value = key.substringAfter("|")
+            if (beforeSecurity[pkg] != null && beforeSecurity[pkg] != value) out += SecurityDrift("permission-drift-" + pkg, "APP", "Application security permissions/configuration changed", beforeSecurity[pkg] ?: "Unknown", value, "HIGH", "Review the changed permissions and application security configuration.")
+        }
         val beforeVersions = before.appKeys.associate { it.substringBefore("|") to it.substringAfter("|") }
         after.appKeys.forEach { key ->
             val pkg = key.substringBefore("|")
