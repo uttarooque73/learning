@@ -59,6 +59,7 @@ import com.uttarooque73.netguard.network.NetworkDiscovery
 import com.uttarooque73.netguard.network.NetworkInfo
 import com.uttarooque73.netguard.network.NetworkInventoryStore
 import com.uttarooque73.netguard.mobile.MobileSecurityAudit
+import com.uttarooque73.netguard.mobile.MobileCheckStatus
 import com.uttarooque73.netguard.mobile.MobileSecurityCheck
 import com.uttarooque73.netguard.mobile.MobileSecuritySnapshot
 import com.uttarooque73.netguard.audit.DiscoveredService
