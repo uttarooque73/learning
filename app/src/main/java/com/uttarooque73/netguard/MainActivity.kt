@@ -456,7 +456,45 @@ class MainActivity : FragmentActivity() {
             }.onSuccess { snapshot ->
                 auditHistoryStore.save(snapshot)
                 auditHistory = auditHistoryStore.load()
-                recordTimeline("report", "Audit package imported", "Imported audit ${snapshot.id}")
+
+                // Restore the imported audit into the active UI so users can inspect,
+                // compare, and export it immediately without re-running discovery.
+                networkInfo = snapshot.network
+                devices = snapshot.devices
+                services = snapshot.services
+                findings = snapshot.findings
+                remediationRecords = snapshot.remediationRecords
+                verificationResults = snapshot.verificationResults
+                customPolicyEvaluations = snapshot.customPolicyEvaluations
+                selectedFinding = null
+                baselineResults = BaselineEvaluator.evaluate(
+                    baselineStore.load() ?: DefaultBaselines.secureHomeNetwork(),
+                    services
+                )
+                riskTrend = riskTrend
+                    .filterNot { it.timestamp == snapshot.createdAtEpochMs }
+                    .plus(
+                        RiskTrendPoint(
+                            snapshot.createdAtEpochMs,
+                            RiskCalculator.score(snapshot.findings),
+                            snapshot.findings.size
+                        )
+                    )
+                    .sortedBy { it.timestamp }
+
+                serviceStore.save(services)
+                findingStore.save(findings)
+                remediationStore.save(remediationRecords)
+                verificationStore.save(verificationResults)
+                inventoryStore.saveNetwork(snapshot.network)
+                inventoryStore.saveDevices(snapshot.devices)
+
+                recordTimeline(
+                    "report",
+                    "Audit package imported",
+                    "Imported and restored audit ${snapshot.id} with ${snapshot.devices.size} devices, " +
+                        "${snapshot.services.size} services and ${snapshot.findings.size} findings"
+                )
             }.onFailure {
                 discoveryError = "Audit import failed: " + (it.message ?: "invalid package")
             }
