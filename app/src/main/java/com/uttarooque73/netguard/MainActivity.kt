@@ -138,6 +138,9 @@ import com.uttarooque73.netguard.monitor.ScheduledMonitorScheduler
 import com.uttarooque73.netguard.security.AppLockPolicyStore
 import com.uttarooque73.netguard.security.UserAccountStore
 import com.uttarooque73.netguard.security.UserProfile
+import com.uttarooque73.netguard.security.UserContactStore
+import com.uttarooque73.netguard.security.SavedContact
+import com.uttarooque73.netguard.ui.ContactNumbersScreen
 import com.uttarooque73.netguard.ui.LoginScreen
 import com.uttarooque73.netguard.ui.SignUpScreen
 import com.uttarooque73.netguard.ui.ProfileScreen
@@ -191,6 +194,11 @@ class MainActivity : FragmentActivity() {
     private lateinit var timelineStore: SecurityTimelineStore
     private lateinit var appLockPolicyStore: AppLockPolicyStore
     private lateinit var userAccountStore: UserAccountStore
+    private lateinit var userContactStore: UserContactStore
+    private var savedContacts by mutableStateOf<List<SavedContact>>(emptyList())
+    private var deviceContacts by mutableStateOf<List<SavedContact>>(emptyList())
+    private var contactError by mutableStateOf<String?>(null)
+    private var contactPermissionRequested = false
     private var authenticated by mutableStateOf(false)
     private var showSignUp by mutableStateOf(false)
     private var authEmail by mutableStateOf("")
@@ -202,6 +210,9 @@ class MainActivity : FragmentActivity() {
     private var profileName by mutableStateOf("")
     private var selectedProfileImage by mutableStateOf<android.net.Uri?>(null)
     private val profileImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri -> selectedProfileImage = uri }
+    private val contactsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) loadDeviceContacts() else contactError = "Contacts permission is required to choose numbers from your contact list."
+    }
     private var appLocked by mutableStateOf(false)
     private var authenticating = false
     private var backgroundedAtElapsedMs = 0L
@@ -227,6 +238,8 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         userAccountStore = UserAccountStore(this)
+        userContactStore = UserContactStore(this)
+        savedContacts = userContactStore.load()
         authenticated = userAccountStore.isLoggedIn()
         userProfile = userAccountStore.loadProfile()
         profileName = userProfile?.displayName.orEmpty()
@@ -561,6 +574,32 @@ class MainActivity : FragmentActivity() {
             },
             "Share NetGuard investigation package"
         ))
+    }
+
+    private fun loadDeviceContacts() {
+        runCatching { deviceContacts = UserContactStore.readPhoneContacts(this); contactError = null }
+            .onFailure { contactError = it.message ?: "Unable to read contacts." }
+    }
+
+    private fun openContactNumbers() {
+        selectedScreen = Screen.Contacts
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            loadDeviceContacts()
+        } else if (!contactPermissionRequested) {
+            contactPermissionRequested = true
+            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    private fun addContact(contact: SavedContact) {
+        if (savedContacts.none { it.phoneNumber == contact.phoneNumber }) {
+            savedContacts = savedContacts + userContactStore.add(contact.name, contact.phoneNumber)
+        }
+    }
+
+    private fun removeContact(id: String) {
+        userContactStore.remove(id)
+        savedContacts = userContactStore.load()
     }
 
     private fun saveUserProfile() {
@@ -963,7 +1002,7 @@ fun NetGuardApp(
                     Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
                     HorizontalDivider()
                     val screens = listOf(
-                        Screen.Dashboard, Screen.Profile, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
+                        Screen.Dashboard, Screen.Profile, Screen.Contacts, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
                         Screen.Findings, Screen.Remediation, Screen.Monitoring, Screen.Baseline,
                         Screen.Mobile, Screen.Wifi, Screen.Web, Screen.Policies, Screen.Timeline,
                         Screen.Reports, Screen.Administration, Screen.Learning, Screen.Advanced
@@ -1196,11 +1235,12 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, Profile, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
+enum class Screen { Dashboard, Profile, Contacts, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 private fun screenTitle(screen: Screen): String = when (screen) {
     Screen.Dashboard -> "Overview"
     Screen.Profile -> "My Profile"
+    Screen.Contacts -> "Mobile Numbers"
     Screen.CommandCenter -> "Security Command Center"
     Screen.Network -> "Network"
     Screen.Devices -> "Devices"
