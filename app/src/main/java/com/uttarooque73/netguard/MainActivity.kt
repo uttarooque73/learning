@@ -227,6 +227,7 @@ class MainActivity : FragmentActivity() {
         monitorEvents = monitorStore.load()
         val savedBaseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
         baselineResults = BaselineEvaluator.evaluate(savedBaseline, services)
+        evaluatePolicyProfile(selectedPolicyProfile)
         profiles = adminStore.loadProfiles()
         assets = adminStore.loadAssets()
         adminEvents = adminStore.loadEvents()
@@ -282,7 +283,7 @@ class MainActivity : FragmentActivity() {
                 httpResult = httpResult,
                 policyResults = policyResults,
                 selectedPolicyProfile = selectedPolicyProfile,
-                onSelectPolicyProfile = { selectedPolicyProfile = it },
+                onSelectPolicyProfile = { selectedPolicyProfile = it; evaluatePolicyProfile(it) },
                 onRunAdvancedAudit = ::runAdvancedAudit,
                 onExportReport = ::exportReport,
                 timelineEvents = timelineEvents,
@@ -592,6 +593,24 @@ class MainActivity : FragmentActivity() {
         adminEvents = (adminEvents + AdminEvent(java.util.UUID.randomUUID().toString(), type, subject, detail)).takeLast(200)
         adminStore.saveEvents(adminEvents)
     }
+    private fun evaluatePolicyProfile(profileName: String) {
+        val input = PolicyInput(
+            telnetReachable = services.any { it.port == 23 && it.reachable },
+            smbReachable = services.any { it.port == 445 && it.reachable },
+            httpReachableWithoutHttps = services.any { it.port == 80 && it.reachable } &&
+                services.none { it.port == 443 && it.reachable },
+            usbDebugging = mobileSecurity?.checks?.any {
+                it.id == "MOB-DEV-002" &&
+                    it.status == com.uttarooque73.netguard.mobile.MobileCheckStatus.FAIL
+            } == true,
+            secureScreenLock = mobileSecurity?.checks?.firstOrNull { it.id == "MOB-DEV-003" }?.status ==
+                com.uttarooque73.netguard.mobile.MobileCheckStatus.PASS
+        )
+        val profile = SecurityPolicyProfiles.defaults().firstOrNull { it.name == profileName }
+            ?: SecurityPolicyProfiles.defaults().first()
+        policyResults = SecurityPolicyEngine.evaluate(profile.rules, input)
+    }
+
     private fun evaluateBaseline() {
         val baseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
         baselineResults = BaselineEvaluator.evaluate(baseline, services)
