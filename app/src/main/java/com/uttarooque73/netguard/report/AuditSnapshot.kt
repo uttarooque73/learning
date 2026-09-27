@@ -59,8 +59,8 @@ object AuditSnapshotDiffCalculator {
     }
 
     private fun riskScore(snapshot: AuditSnapshot): Int =
-        (100 - snapshot.findings.sumOf<Int> {
-            when (it.severity) {
+        (100 - snapshot.findings.fold(0) { total, finding ->
+            total + when (finding.severity) {
                 FindingSeverity.CRITICAL -> 40
                 FindingSeverity.HIGH -> 25
                 FindingSeverity.MEDIUM -> 12
