@@ -117,6 +117,8 @@ import com.uttarooque73.netguard.consumer.ConsumerSecurityEngine
 import com.uttarooque73.netguard.consumer.PermissionCenter
 import com.uttarooque73.netguard.consumer.SecurityPosture
 import com.uttarooque73.netguard.notifications.SecurityNotificationHelper
+import com.uttarooque73.netguard.features.privacy.DevicePrivacyExposureScanner
+import com.uttarooque73.netguard.features.privacy.PrivacyExposureReport
 import com.uttarooque73.netguard.features.reporting.InvestigationPackageExporter
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 import com.uttarooque73.netguard.features.reporting.AuditPackageImporter
@@ -244,6 +246,8 @@ class MainActivity : FragmentActivity() {
     private var timelineEvents by mutableStateOf<List<SecurityTimelineEvent>>(emptyList())
     private var fullSecurityCheckRunning by mutableStateOf(false)
     private var fullCheckPendingNetwork = false
+    private var privacyExposureReport by mutableStateOf<PrivacyExposureReport?>(null)
+    private var privacyExposureRunning by mutableStateOf(false)
 
     private val auditPackageLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -397,7 +401,10 @@ class MainActivity : FragmentActivity() {
                 onObserveWifiTrust = ::observeWifiTrust,
                 fullSecurityCheckRunning = fullSecurityCheckRunning,
                 onRunFullSecurityCheck = ::runFullSecurityCheck,
-                onRequestNotificationPermission = ::requestNotificationPermission
+                onRequestNotificationPermission = ::requestNotificationPermission,
+                privacyExposureRunning = privacyExposureRunning,
+                privacyExposureReport = privacyExposureReport,
+                onRunPrivacyExposureScan = ::runPrivacyExposureScan
                 )
             }
         }
@@ -530,6 +537,19 @@ class MainActivity : FragmentActivity() {
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
     }
 
+    private fun runPrivacyExposureScan() {
+        if (privacyExposureRunning) return
+        privacyExposureRunning = true
+        lifecycleScope.launch {
+            privacyExposureReport = runCatching {
+                val scannedApps = if (appSecurityChecks.isEmpty()) InstalledAppSecurityAudit.inspect(this@MainActivity) else appSecurityChecks
+                DevicePrivacyExposureScanner.scan(this@MainActivity, scannedApps)
+            }.getOrNull()
+            privacyExposureRunning = false
+            recordTimeline("privacy", "Privacy exposure scan completed", "Device and installed-app privacy exposure was reviewed")
+        }
+    }
+
     private fun runFullSecurityCheck() {
         if (fullSecurityCheckRunning) return
         fullSecurityCheckRunning = true
@@ -578,6 +598,7 @@ class MainActivity : FragmentActivity() {
                     wifiObservationStore.save(currentWifi)
                 }
                 appSecurityChecks = runCatching { InstalledAppSecurityAudit.inspect(this@MainActivity) }.getOrDefault(emptyList())
+                privacyExposureReport = DevicePrivacyExposureScanner.scan(this@MainActivity, appSecurityChecks)
                 val mobile = mobileSecurity
                 val policyInput = PolicyInput(
                     telnetReachable = services.any { it.port == 23 && it.reachable },
@@ -1201,7 +1222,10 @@ fun NetGuardApp(
     onObserveWifiTrust: () -> Unit,
     fullSecurityCheckRunning: Boolean,
     onRunFullSecurityCheck: () -> Unit,
-    onRequestNotificationPermission: () -> Unit
+    onRequestNotificationPermission: () -> Unit,
+    privacyExposureRunning: Boolean,
+    privacyExposureReport: PrivacyExposureReport?,
+    onRunPrivacyExposureScan: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1297,7 +1321,10 @@ fun NetGuardApp(
                 onObserveWifiTrust = onObserveWifiTrust,
                 fullSecurityCheckRunning = fullSecurityCheckRunning,
                 onRunFullSecurityCheck = onRunFullSecurityCheck,
-                onRequestNotificationPermission = onRequestNotificationPermission
+                onRequestNotificationPermission = onRequestNotificationPermission,
+                privacyExposureRunning = privacyExposureRunning,
+                privacyExposureReport = privacyExposureReport,
+                onRunPrivacyExposureScan = onRunPrivacyExposureScan
             )
         }
     }
@@ -1364,7 +1391,10 @@ private fun Dashboard(
     onObserveWifiTrust: () -> Unit,
     fullSecurityCheckRunning: Boolean,
     onRunFullSecurityCheck: () -> Unit,
-    onRequestNotificationPermission: () -> Unit
+    onRequestNotificationPermission: () -> Unit,
+    privacyExposureRunning: Boolean,
+    privacyExposureReport: PrivacyExposureReport?,
+    onRunPrivacyExposureScan: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -1497,6 +1527,28 @@ private fun Dashboard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Run " + selectedAuditProfile.name.lowercase().replaceFirstChar { it.uppercase() } + " Security Audit")
+                        }
+                    }
+                }
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Device Privacy & Exposure", style = MaterialTheme.typography.titleMedium)
+                        Text("Scan the phone and installed apps for privacy and local exposure signals.")
+                        privacyExposureReport?.let { report ->
+                            Text("Privacy exposure: " + report.score + "/100", style = MaterialTheme.typography.headlineSmall)
+                            Text(report.findings.size.toString() + " items to review • " + report.scannedApps + " apps scanned")
+                            report.findings.take(3).forEach { finding ->
+                                Text("• " + finding.title)
+                                Text(finding.action, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        } ?: Text("No privacy exposure scan has been run yet.")
+                        LoadingButton(
+                            enabled = !privacyExposureRunning,
+                            onClick = onRunPrivacyExposureScan,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (privacyExposureRunning) "Scanning privacy exposure…" else "Run Privacy Scan")
                         }
                     }
                 }
