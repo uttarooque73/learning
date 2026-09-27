@@ -32,7 +32,8 @@ fun SecurityCommandCenterScreen(
     services: List<DiscoveredService>,
     findings: List<Finding>,
     monitorEvents: List<MonitorEvent>,
-    wifiTrust: WifiTrustResult?
+    wifiTrust: WifiTrustResult?,
+    onExportInvestigation: () -> Unit
 ) {
     var profile by remember { mutableStateOf(AuditProfile.STANDARD) }
     var experimentResult by remember { mutableStateOf<ExperimentResult?>(null) }
@@ -133,6 +134,62 @@ fun SecurityCommandCenterScreen(
                     Text("\${it.status}: \${it.experiment.title}")
                     Text(it.evidence)
                 }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Asset Security Profiles", style = MaterialTheme.typography.titleMedium)
+                if (devices.isEmpty()) {
+                    Text("No assets are currently profiled.")
+                } else {
+                    devices.take(8).forEach { device ->
+                        val assetServices = services.filter { it.ipAddress == device.ipAddress }
+                        val assetFindings = findings.filter { it.ipAddress == device.ipAddress }
+                        Text(device.ipAddress + " — " + (device.hostname ?: "unknown hostname"), style = MaterialTheme.typography.titleSmall)
+                        Text("Services: " + assetServices.count { it.reachable } + " • Findings: " + assetFindings.size)
+                        assetServices.take(4).forEach { Text("  " + it.protocol + "/" + it.port + " — " + it.serviceName) }
+                    }
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Evidence Explorer", style = MaterialTheme.typography.titleMedium)
+                if (findings.isEmpty()) {
+                    Text("No finding evidence is currently stored.")
+                } else {
+                    findings.take(8).forEach {
+                        Text(it.id + " — " + it.title, style = MaterialTheme.typography.titleSmall)
+                        Text("Asset: " + it.ipAddress + " • Severity: " + it.severity + " • Confidence: " + it.confidence)
+                        Text("Observed evidence: " + it.evidence)
+                        Text("Remediation: " + it.remediation)
+                        Text("Verification: " + it.verification)
+                    }
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Investigation Timeline", style = MaterialTheme.typography.titleMedium)
+                if (monitorEvents.isEmpty()) {
+                    Text("No investigation events are currently stored.")
+                } else {
+                    monitorEvents.takeLast(10).reversed().forEach {
+                        Text(it.type.name + " — " + it.ipAddress, style = MaterialTheme.typography.titleSmall)
+                        Text(it.detail)
+                    }
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Local Investigation Package", style = MaterialTheme.typography.titleMedium)
+                Text("Exports the current bounded audit evidence as a versioned local audit package.")
+                Button(onClick = onExportInvestigation) { Text("Export investigation package") }
             }
         }
 
