@@ -479,29 +479,31 @@ Status legend:
 
 ### Phase 13 — Security Command Center
 
-**Status: Implemented — MVP**
+**Status: Implemented — Phase 13 gaps completed**
 
 | Feature | Status | Scope |
 |---|---|---|
 | Security Detective | **Completed — MVP** | Evidence-backed investigation summary using current devices, services, findings and monitoring changes |
 | What Changed? | **Completed — MVP** | Recent monitoring-event investigation view |
 | Security Graph | **Completed — MVP** | Network → asset → service → finding relationship view |
-| Exposure Diff | **Completed — MVP** | Change evidence surfaced from the existing monitoring event stream |
-| Asset Security Profiles | **Completed — MVP** | Per-asset services, findings and hostname/reachability context |
+| Exposure Diff | **Completed** | True audit-snapshot comparison for devices, services, findings, risk, and remediation state |
+| Asset Security Profiles | **Completed** | First/last seen, services, findings, remediation state and service-change count |
 | Evidence Explorer | **Completed — MVP** | Finding evidence, severity, confidence, remediation and verification context |
 | Investigation Timeline | **Completed — MVP** | Recent change events grouped as investigation evidence |
-| Safe Audit Profiles | **Completed — MVP** | Quick, Standard and Deep scope definitions with explicit defensive boundary |
+| Safe Audit Profiles | **Completed** | Executable bounded Quick/Standard/Deep discovery and service-audit plans |
 | Security Score Explainability | **Completed — MVP** | Finding-level score deductions tied to severity and asset |
 | Security Experiments | **Completed — MVP** | Safe HTTP/Telnet/SMB/Wi-Fi evidence checks using existing authorized observations only |
-| Evidence Analyst | **Completed — MVP** | Offline deterministic questions answered only from stored NetGuard evidence |
-| Local Investigation Packages | **Completed — MVP** | Reuses bounded versioned audit-package export for local investigation evidence |
+| Evidence Analyst | **Completed** | Deterministic evidence analyst plus optional local Ollama model integration with grounded context |
+| Local Investigation Packages | **Completed** | Dedicated bounded ZIP containing recent snapshots, diff, timeline and manifest |
 
 Phase 13 implementation notes:
-- Command Center analysis is local-first and does not require a cloud service or LLM.
+- Command Center analysis remains local-first; the deterministic analyst requires no network service.
+- Optional Ollama integration sends only the bounded evidence context and the user's question to a user-configured local endpoint.
 - Security Experiments never perform credential attacks, exploitation, brute force, stealth, or access-control bypass.
-- Evidence Analyst responses are deterministic and limited to stored observations.
-- Investigation package export uses the existing bounded audit-package format.
-- Audit profile selection currently documents scope; deeper profile-specific discovery orchestration remains a future enhancement.
+- Exposure Diff now compares persisted audit snapshots and includes remediation-state changes.
+- Audit profiles execute bounded discovery and service audits with explicit device/service limits.
+- Investigation packages use a dedicated versioned ZIP format capped at three snapshots.
+- Security Graph remains a lightweight relationship view rather than a GPU/canvas graph; this is intentional for the current Android implementation.
 
 ### Current implementation backlog
 
