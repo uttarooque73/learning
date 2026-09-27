@@ -17,4 +17,22 @@ class MonitorEngineTest {
         val events = MonitorEngine.compareServices(old, current)
         assertEquals(2, events.size)
     }
+    @Test fun detectsNetworkContextChange() {
+        val previous = com.uttarooque73.netguard.network.NetworkInfo(
+            "wlan0", "192.168.1.10", "192.168.1.1", "192.168.1.0/24",
+            listOf("192.168.1.1"), "Home", "aa:bb:cc:dd:ee:ff", "WPA2"
+        )
+        val current = previous.copy(gatewayAddress = "192.168.2.1", subnet = "192.168.2.0/24")
+        val events = MonitorEngine.compareNetwork(previous, current)
+        assertEquals(MonitorEventType.NETWORK_CHANGED, events.single().type)
+    }
+
+    @Test fun ignoresEquivalentNetworkContext() {
+        val network = com.uttarooque73.netguard.network.NetworkInfo(
+            "wlan0", "192.168.1.10", "192.168.1.1", "192.168.1.0/24",
+            listOf("192.168.1.1"), "Home", "aa:bb:cc:dd:ee:ff", "WPA2"
+        )
+        assertEquals(0, MonitorEngine.compareNetwork(network, network.copy()).size)
+    }
+
 }
