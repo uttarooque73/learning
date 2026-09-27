@@ -299,7 +299,7 @@ class MainActivity : FragmentActivity() {
                 onStartAudit = ::requestNetworkPermissionAndInspect,
                 discoveryError = discoveryError,
                 selectedScreen = selectedScreen,
-                onSelectScreen = { selectedScreen = it },
+                onSelectScreen = { screen -> if (screen == Screen.Contacts) openContactNumbers() else selectedScreen = screen },
                 onDiscoverDevices = ::discoverDevices,
                 services = services,
                 auditingIp = auditingIp,
