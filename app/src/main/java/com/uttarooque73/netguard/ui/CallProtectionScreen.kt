@@ -81,10 +81,22 @@ fun CallProtectionScreen(
         }
 
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ProtectionStat("Blocked calls", blockedCalls.toString(), Modifier.weight(1f))
-                ProtectionStat("Blocked list", blockedNumbers.size.toString(), Modifier.weight(1f))
-                ProtectionStat("Missed", missedCalls.toString(), Modifier.weight(1f))
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                if (maxWidth < 420.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ProtectionStat("Blocked calls", blockedCalls.toString(), Modifier.weight(1f))
+                            ProtectionStat("Blocked list", blockedNumbers.size.toString(), Modifier.weight(1f))
+                        }
+                        ProtectionStat("Missed calls", missedCalls.toString(), Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ProtectionStat("Blocked calls", blockedCalls.toString(), Modifier.weight(1f))
+                        ProtectionStat("Blocked list", blockedNumbers.size.toString(), Modifier.weight(1f))
+                        ProtectionStat("Missed calls", missedCalls.toString(), Modifier.weight(1f))
+                    }
+                }
             }
         }
 
