@@ -27,8 +27,6 @@ class NetGuardCallScreeningService : CallScreeningService() {
 
     private fun findContactName(number: String): String? {
         if (number.isBlank()) return null
-        return UserContactStore.readPhoneContacts(this)
-            .firstOrNull { CallProtectionStore.normalize(it.phoneNumber) == CallProtectionStore.normalize(number) }
-            ?.name
+        return UserContactStore(this).findSavedByNumber(number)?.name
     }
 }
