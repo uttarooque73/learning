@@ -113,6 +113,10 @@ import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.command.SecurityCommandCenterScreen
 import com.uttarooque73.netguard.features.command.AuditProfile
 import com.uttarooque73.netguard.features.command.AuditProfilePlanner
+import com.uttarooque73.netguard.consumer.ConsumerSecurityEngine
+import com.uttarooque73.netguard.consumer.PermissionCenter
+import com.uttarooque73.netguard.consumer.SecurityPosture
+import com.uttarooque73.netguard.notifications.SecurityNotificationHelper
 import com.uttarooque73.netguard.features.reporting.InvestigationPackageExporter
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 import com.uttarooque73.netguard.features.reporting.AuditPackageImporter
@@ -238,6 +242,8 @@ class MainActivity : FragmentActivity() {
     private var backgroundedAtElapsedMs = 0L
     private companion object { const val APP_LOCK_GRACE_MS = 5_000L }
     private var timelineEvents by mutableStateOf<List<SecurityTimelineEvent>>(emptyList())
+    private var fullSecurityCheckRunning by mutableStateOf(false)
+    private var fullCheckPendingNetwork = false
 
     private val auditPackageLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -386,7 +392,9 @@ class MainActivity : FragmentActivity() {
                 callLogPermissionGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED,
                 callScreeningEnabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&
                     getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true,
-                onObserveWifiTrust = ::observeWifiTrust
+                onObserveWifiTrust = ::observeWifiTrust,
+                fullSecurityCheckRunning = fullSecurityCheckRunning,
+                onRunFullSecurityCheck = ::runFullSecurityCheck
                 )
             }
         }
@@ -488,6 +496,11 @@ class MainActivity : FragmentActivity() {
         runCatching { NetworkDiscovery(this).inspect() }
             .onSuccess { info ->
                 networkInfo = info
+                if (fullCheckPendingNetwork) {
+                    fullCheckPendingNetwork = false
+                    performFullSecurityCheck()
+                    return@onSuccess
+                }
                 recordTimeline("network", "Network inspected", info.ssid ?: "Active network inspected")
                 devices = emptyList()
                 services = emptyList()
@@ -504,6 +517,63 @@ class MainActivity : FragmentActivity() {
                 verificationStore.save(emptyList())
             }
             .onFailure { discoveryError = it.message ?: "Unable to inspect the active network." }
+    }
+
+    private fun runFullSecurityCheck() {
+        if (fullSecurityCheckRunning) return
+        fullSecurityCheckRunning = true
+        if (networkInfo == null) {
+            fullCheckPendingNetwork = true
+            requestNetworkPermissionAndInspect()
+            return
+        }
+        performFullSecurityCheck()
+    }
+
+    private fun performFullSecurityCheck() {
+        lifecycleScope.launch {
+            try {
+                mobileSecurity = runCatching { MobileSecurityAudit.inspect(this@MainActivity) }.getOrNull()
+                val info = networkInfo
+                if (info != null) {
+                    val localIp = info.localAddress
+                    val prefix = info.subnet?.substringAfter('/')?.toIntOrNull()
+                    if (localIp != null && prefix != null) {
+                        val discovered = runCatching { DeviceDiscovery().discover(localIp, prefix) }.getOrDefault(emptyList())
+                        devices = discovered
+                        inventoryStore.saveDevices(discovered)
+                        val audited = discovered.take(12).flatMap { device -> runCatching { ServiceAudit().audit(device.ipAddress) }.getOrDefault(emptyList()) }
+                        services = audited
+                        serviceStore.save(services)
+                        findings = audited.mapNotNull(ServiceFindingRules::evaluate)
+                        findingStore.save(findings)
+                    }
+                    dnsGatewayResult = runCatching { DnsGatewayAudit.inspect(this@MainActivity) }.getOrNull()
+                    val currentWifi = WifiObservation(info.ssid, info.bssid, info.gatewayAddress, info.wifiSecurity)
+                    wifiTrustResult = WifiTrustEngine.compare(wifiObservationStore.load(), currentWifi)
+                    wifiObservationStore.save(currentWifi)
+                }
+                appSecurityChecks = runCatching { InstalledAppSecurityAudit.inspect(this@MainActivity) }.getOrDefault(emptyList())
+                val mobile = mobileSecurity
+                val policyInput = PolicyInput(
+                    telnetReachable = services.any { it.port == 23 && it.reachable },
+                    smbReachable = services.any { it.port == 445 && it.reachable },
+                    httpReachableWithoutHttps = services.any { it.port == 80 && it.reachable } && services.none { it.port == 443 && it.reachable },
+                    usbDebugging = mobile?.checks?.any { it.id == "MOB-DEV-002" && it.status == MobileCheckStatus.FAIL } == true,
+                    secureScreenLock = mobile?.checks?.firstOrNull { it.id == "MOB-DEV-003" }?.status == MobileCheckStatus.PASS
+                )
+                val policy = SecurityPolicyProfiles.defaults().firstOrNull { it.name == selectedPolicyProfile } ?: SecurityPolicyProfiles.defaults().first()
+                policyResults = SecurityPolicyEngine.evaluate(policy.rules, policyInput)
+                checkForChanges()
+                createReport()
+                recordTimeline("security-check", "Full security check completed", "Phone, network, applications and stored findings refreshed")
+                val posture = ConsumerSecurityEngine.posture(findings, mobileSecurity, networkInfo, System.currentTimeMillis())
+                SecurityNotificationHelper.notifyPosture(this@MainActivity, posture)
+            } finally {
+                fullSecurityCheckRunning = false
+                fullCheckPendingNetwork = false
+            }
+        }
     }
 
     private fun refreshMobileSecurity() {
@@ -1104,7 +1174,9 @@ fun NetGuardApp(
     onClearCallLogs: () -> Unit,
     onEnableCallScreening: () -> Unit,
     callScreeningEnabled: Boolean,
-    onObserveWifiTrust: () -> Unit
+    onObserveWifiTrust: () -> Unit,
+    fullSecurityCheckRunning: Boolean,
+    onRunFullSecurityCheck: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1197,7 +1269,9 @@ fun NetGuardApp(
                 customPolicyEvaluations = customPolicyEvaluations,
                 onRunCommandCenterProfile = onRunCommandCenterProfile,
                 onExportInvestigation = onExportInvestigation,
-                onObserveWifiTrust = onObserveWifiTrust
+                onObserveWifiTrust = onObserveWifiTrust,
+                fullSecurityCheckRunning = fullSecurityCheckRunning,
+                onRunFullSecurityCheck = onRunFullSecurityCheck
             )
         }
     }
@@ -1261,7 +1335,9 @@ private fun Dashboard(
     customPolicyEvaluations: List<CustomPolicyEvaluation>,
     onRunCommandCenterProfile: (AuditProfile) -> Unit,
     onExportInvestigation: () -> Unit,
-    onObserveWifiTrust: () -> Unit
+    onObserveWifiTrust: () -> Unit,
+    fullSecurityCheckRunning: Boolean,
+    onRunFullSecurityCheck: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -1310,6 +1386,43 @@ private fun Dashboard(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Security Check", style = MaterialTheme.typography.titleLarge)
+                        Text("Check your phone, current network, installed apps and security findings in one pass.")
+                        LoadingButton(
+                            onClick = onRunFullSecurityCheck,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !fullSecurityCheckRunning
+                        ) {
+                            if (fullSecurityCheckRunning) {
+                                CircularProgressIndicator(Modifier.height(18.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.height(4.dp))
+                            }
+                            Text(if (fullSecurityCheckRunning) "Checking security…" else "Run Full Security Check")
+                        }
+                        Text("The check uses local evidence and does not claim that a warning proves compromise.", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+
+                val consumerPosture = ConsumerSecurityEngine.posture(findings, mobileSecurity, networkInfo, auditHistory.lastOrNull()?.createdAtEpochMs ?: 0L)
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Your security status", style = MaterialTheme.typography.titleMedium)
+                        Text(consumerPosture.score.toString() + "/100", style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            if (consumerPosture.score >= 80) "No high-priority findings are currently stored."
+                            else "Review the recommended actions below."
+                        )
+                        consumerPosture.recommendations.take(3).forEach { recommendation ->
+                            Text("• " + recommendation.title, style = MaterialTheme.typography.bodyMedium)
+                            Text(recommendation.action, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (consumerPosture.recommendations.isEmpty()) Text("No additional recommendations from current evidence.")
+                        LoadingTextButton(onClick = { onSelectScreen(Screen.Findings) }) { Text("Review and fix findings") }
+                    }
+                }
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1358,6 +1471,17 @@ private fun Dashboard(
                         ) {
                             Text("Run " + selectedAuditProfile.name.lowercase().replaceFirstChar { it.uppercase() } + " Security Audit")
                         }
+                    }
+                }
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Permission Center", style = MaterialTheme.typography.titleMedium)
+                        Text("NetGuard requests sensitive permissions only when the related feature needs them.")
+                        PermissionCenter.explanations.take(3).forEach { item ->
+                            Text(item.title + " — " + item.purpose, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text("Contacts and call history are optional features.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
