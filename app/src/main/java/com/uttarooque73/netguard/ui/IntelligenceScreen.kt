@@ -78,7 +78,7 @@ fun IntelligenceScreen(
                     Text(candidate.title, style = MaterialTheme.typography.titleMedium)
                     Text(candidate.id + " • " + candidate.confidence + " • " + candidate.ipAddress)
                     Text(candidate.reason)
-                    Button(
+                    LoadingButton(
                         onClick = {
                             loading[candidate.id + candidate.ipAddress] = true
                             scope.launch {
