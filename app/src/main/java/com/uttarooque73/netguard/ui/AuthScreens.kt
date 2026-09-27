@@ -122,6 +122,24 @@ private fun AuthShell(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
+fun GuestProfileScreen(onCreateAccount: () -> Unit, onLogout: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Guest Mode", style = MaterialTheme.typography.headlineSmall)
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("No account required", style = MaterialTheme.typography.titleMedium)
+                Text("Core security checks run locally. Create an account only if you want profile and account features.")
+            }
+        }
+        LoadingButton(onClick = onCreateAccount, modifier = Modifier.fillMaxWidth()) { Text("Create account") }
+        LoadingTextButton(onClick = onLogout) { Text("Exit guest mode") }
+    }
+}
+
+@Composable
 fun ProfileScreen(
     profile: com.uttarooque73.netguard.security.UserProfile,
     displayName: String,
