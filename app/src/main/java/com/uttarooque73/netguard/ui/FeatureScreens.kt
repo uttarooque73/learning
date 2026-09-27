@@ -114,8 +114,60 @@ fun RemediationFeatureScreen(findings: List<Finding>, records: List<RemediationR
 }
 
 @Composable
-fun WifiFeatureScreen(result: WifiTrustResult?) = FeatureListScreen("Wi-Fi Trust", "Track changes in the observed Wi-Fi identity.") {
-    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("Status: " + (result?.status ?: "NOT AUDITED")); Text(result?.evidence ?: "No observation yet") } }
+fun WifiFeatureScreen(result: WifiTrustResult?) = FeatureListScreen(
+    "Wi-Fi Trust",
+    "Detect changes in the observed Wi-Fi identity and understand what to verify."
+) {
+    val status = result?.status
+    val statusLabel = status?.name ?: "NOT AUDITED"
+    val statusColor = when (status) {
+        com.uttarooque73.netguard.features.wifi.WifiTrustStatus.KNOWN -> MaterialTheme.colorScheme.primary
+        com.uttarooque73.netguard.features.wifi.WifiTrustStatus.CHANGED -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = when (status) {
+        com.uttarooque73.netguard.features.wifi.WifiTrustStatus.CHANGED -> MaterialTheme.colorScheme.errorContainer
+        com.uttarooque73.netguard.features.wifi.WifiTrustStatus.KNOWN -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    })) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Current trust state", style = MaterialTheme.typography.titleMedium)
+            Text(statusLabel, style = MaterialTheme.typography.headlineSmall, color = statusColor)
+            Text(when (status) {
+                com.uttarooque73.netguard.features.wifi.WifiTrustStatus.KNOWN -> "The current observation matches the locally stored observation."
+                com.uttarooque73.netguard.features.wifi.WifiTrustStatus.CHANGED -> "One or more tracked Wi-Fi identity fields changed since the previous observation."
+                else -> "Run a Wi-Fi observation after inspecting the current network to establish a baseline."
+            })
+        }
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Evidence", style = MaterialTheme.typography.titleMedium)
+            Text(result?.evidence ?: "No observation has been recorded yet.")
+            if (status == com.uttarooque73.netguard.features.wifi.WifiTrustStatus.CHANGED) {
+                Text("Tracked fields: SSID, BSSID, gateway, and Wi-Fi security mode.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (!result?.remediation.isNullOrEmpty()) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Recommended actions", style = MaterialTheme.typography.titleMedium)
+                result?.remediation?.forEachIndexed { index, action ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("${index + 1}.", style = MaterialTheme.typography.titleSmall)
+                        Text(action, Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Interpretation", style = MaterialTheme.typography.titleMedium)
+            Text("A changed BSSID alone does not prove a rogue access point. Treat this as a change-detection signal and verify the network identity before trusting it.")
+        }
+    }
 }
 
 @Composable
