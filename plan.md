@@ -373,8 +373,8 @@ Status legend:
 | 6. HTTP Security Analyzer | **Completed — MVP** | Redirect, HSTS, CSP, X-Content-Type-Options, Referrer-Policy, normalized header inspection | Expanded cookie/security-header analysis |
 | 7. Wi-Fi Trust & Change Detection | **Completed — MVP** | SSID/BSSID/gateway/security-mode history and change classification with uncertainty | More trust signals and Android-version coverage |
 | 8. Remediation Center | **Completed — MVP** | Central queue, guided remediation, verification, history | More contextual platform/router guidance |
-| 9. Security Timeline | **Completed — Foundation** | Persistent timeline model/store, device/service/network/finding/remediation/verification events | Complete policy/administration/import event coverage and timeline UI validation |
-| 10. Advanced Reporting | **Completed — MVP** | JSON, CSV, PDF, ZIP audit package, executive/technical reports, importer | Full end-to-end release validation and richer report customization |
+| 9. Security Timeline | **Completed** | Persistent timeline model/store, device/service/network/finding/remediation/verification, policy, administration, import, mobile, baseline, and report events | Physical-device UI validation only |
+| 10. Advanced Reporting | **Completed** | JSON, CSV, PDF, ZIP audit package, executive/technical reports, importer, expanded evidence/remediation/policy exports | Full end-to-end physical-device/release validation |
 | 11. Configurable Security Policies | **Completed — MVP** | Persistent custom policies, validation, BLOCK_PORT/REQUIRE_HTTPS rules, audit/report representation | Complete history persistence validation; richer thresholds/profiles |
 | 12. Security Learning Mode | **Completed — MVP** | Technical explanations, evidence interpretation, remediation and verification walkthroughs | Expand lesson content and interactive exercises |
 
@@ -390,16 +390,16 @@ Status legend:
 
 ### Current pending implementation backlog
 
-1. **Audit history completeness** — verify and finish persistence/restoration of custom policy evaluations and all audit metadata.
-2. **Imported-audit UX** — add import confirmation, clearer error states, and robust MIME/provider handling.
-3. **Timeline completeness** — add policy, administration, and audit-import events consistently.
+1. **Audit history completeness** — completed: network, device, service, finding, remediation, verification, and custom-policy evaluation data are persisted/restored.
+2. **Imported-audit UX** — completed: explicit confirmation, ZIP/octet-stream provider support, bounded validation, and user-visible failure reporting.
+3. **Timeline completeness** — completed: policy, administration, audit-import, mobile, baseline, and report events are recorded.
 4. **Monitoring hardening** — completed: network-context changes reset the baseline safely; device/service metadata changes are detected and persisted.
 5. **Security intelligence expansion** — richer service fingerprints and confidence/evidence handling without claiming unsupported device identities.
 6. **Vulnerability intelligence expansion** — add product/version evidence before treating candidate CVEs as applicable.
 7. **TLS/HTTP expansion** — improve protocol/cipher and cookie/security-header evidence where platform APIs permit.
 8. **Wi-Fi trust expansion** — add additional observable trust signals while retaining explicit uncertainty.
 9. **Mobile/app security expansion** — increase Android-version coverage and observable application posture checks.
-10. **Reporting completion** — richer report customization and full release validation.
+10. **Reporting completion** — completed: CSV now includes findings/remediation/verification/policy records and PDF includes network, risk, evidence, remediation, verification, and policy detail; physical-device/release validation remains.
 11. **App-lock hardening** — validate cancellation, unavailable biometric, lockout, process restart, and background-transition behavior on physical devices.
 12. **Test coverage** — expand unit/integration coverage around persistence, import/export, monitoring, timeline, and policy evaluation.
 13. **Release validation** — physical-device compatibility, runtime permission review, release build/signing validation, and regression QA.
