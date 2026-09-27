@@ -10,7 +10,7 @@ class TrustedSecurityBaselineStore(context: Context) {
     fun save(snapshot: TrustedSecurityBaselineSnapshot) {
         prefs.edit().putString("snapshot", JSONObject().apply {
             put("capturedAtEpochMs", snapshot.capturedAtEpochMs)
-            put("ssid", snapshot.ssid); put("bssid", snapshot.bssid); put("gateway", snapshot.gateway)
+            put("ssid", snapshot.ssid); put("bssid", snapshot.bssid); put("gateway", snapshot.gateway); put("dnsKeys", JSONArray(snapshot.dnsKeys)); put("wifiSecurity", snapshot.wifiSecurity)
             put("deviceKeys", JSONArray(snapshot.deviceKeys)); put("serviceKeys", JSONArray(snapshot.serviceKeys)); put("appKeys", JSONArray(snapshot.appKeys)); put("appSecurityKeys", JSONArray(snapshot.appSecurityKeys))
         }.toString()).apply()
     }
@@ -18,7 +18,7 @@ class TrustedSecurityBaselineStore(context: Context) {
     fun load(): TrustedSecurityBaselineSnapshot? = runCatching {
         val j = JSONObject(prefs.getString("snapshot", null) ?: return null)
         fun array(name: String) = List(j.optJSONArray(name)?.length() ?: 0) { j.getJSONArray(name).getString(it) }
-        TrustedSecurityBaselineSnapshot(j.getLong("capturedAtEpochMs"), j.optString("ssid").ifBlank { null }, j.optString("bssid").ifBlank { null }, j.optString("gateway").ifBlank { null }, array("deviceKeys"), array("serviceKeys"), array("appKeys"), array("appSecurityKeys"))
+        TrustedSecurityBaselineSnapshot(j.getLong("capturedAtEpochMs"), j.optString("ssid").ifBlank { null }, j.optString("bssid").ifBlank { null }, j.optString("gateway").ifBlank { null }, array("dnsKeys"), j.optString("wifiSecurity").ifBlank { null }, array("deviceKeys"), array("serviceKeys"), array("appKeys"), array("appSecurityKeys"))
     }.getOrNull()
 
     fun clear() { prefs.edit().remove("snapshot").apply() }
