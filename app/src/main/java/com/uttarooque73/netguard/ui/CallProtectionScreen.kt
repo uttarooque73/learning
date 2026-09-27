@@ -37,7 +37,7 @@ fun CallProtectionScreen(
                     Text("Call history permission is not granted.", style = MaterialTheme.typography.titleMedium)
                     Text("NetGuard needs this permission only to display your recent system call history here.")
                     callLogError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    Button(onClick = onRequestCallLogPermission) { Text("Allow call history") }
+                    LoadingButton(onClick = onRequestCallLogPermission) { Text("Allow call history") }
                 }
             }
         }
@@ -46,7 +46,7 @@ fun CallProtectionScreen(
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Call screening is not enabled.")
-                    Button(onClick = onEnableScreening) { Text("Enable call screening") }
+                    LoadingButton(onClick = onEnableScreening) { Text("Enable call screening") }
                 }
             }
         } else Text("Call screening is enabled.", color = MaterialTheme.colorScheme.primary)
@@ -55,13 +55,13 @@ fun CallProtectionScreen(
         blockedNumbers.forEach { number ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(number, Modifier.weight(1f))
-                TextButton(onClick = { onUnblock(number) }) { Text("Unblock") }
+                LoadingTextButton(onClick = { onUnblock(number) }) { Text("Unblock") }
             }
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Recent calls", style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = onClearLogs) { Text("Clear") }
+            LoadingTextButton(onClick = onClearLogs) { Text("Clear") }
         }
 
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -73,7 +73,7 @@ fun CallProtectionScreen(
                         Text(log.direction + " • " + DateFormat.getDateTimeInstance().format(Date(log.timestamp)))
                         Text(if (log.blocked) "Blocked by NetGuard" else "Allowed")
                         if (!log.blocked && log.number.isNotBlank() && log.number != "Unknown number") {
-                            TextButton(onClick = { onBlock(log.number) }) { Text("Block number") }
+                            LoadingTextButton(onClick = { onBlock(log.number) }) { Text("Block number") }
                         }
                     }
                 }
