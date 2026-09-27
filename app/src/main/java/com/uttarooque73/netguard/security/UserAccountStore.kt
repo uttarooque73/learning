@@ -21,6 +21,12 @@ class UserAccountStore(private val context: Context) {
 
     fun exists(): Boolean = prefs.getBoolean("exists", false)
 
+    fun isGuest(): Boolean = prefs.getBoolean("guest", false)
+
+    fun enterGuestMode() { prefs.edit().putBoolean("guest", true).putBoolean("loggedIn", false).apply() }
+
+    fun exitGuestMode() { prefs.edit().putBoolean("guest", false).apply() }
+
     fun create(email: String, password: CharArray, displayName: String): Result<UserProfile> {
         val normalized = email.trim().lowercase()
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(normalized).matches()) return Result.failure(IllegalArgumentException("Enter a valid email address."))
@@ -36,6 +42,7 @@ class UserAccountStore(private val context: Context) {
             .putString("salt", android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP))
             .putString("hash", android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP))
             .putBoolean("loggedIn", true)
+            .putBoolean("guest", false)
             .apply()
         return Result.success(loadProfile()!!)
     }
@@ -52,7 +59,7 @@ class UserAccountStore(private val context: Context) {
         return Result.success(loadProfile()!!)
     }
 
-    fun logout() { prefs.edit().putBoolean("loggedIn", false).apply() }
+    fun logout() { prefs.edit().putBoolean("loggedIn", false).putBoolean("guest", false).apply() }
     fun isLoggedIn(): Boolean = exists() && prefs.getBoolean("loggedIn", false)
 
     fun updateProfile(displayName: String, imagePath: String?): UserProfile {
