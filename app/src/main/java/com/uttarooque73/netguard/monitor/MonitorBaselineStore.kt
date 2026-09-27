@@ -3,11 +3,43 @@ package com.uttarooque73.netguard.monitor
 import android.content.Context
 import com.uttarooque73.netguard.audit.DiscoveredService
 import com.uttarooque73.netguard.network.DiscoveredDevice
+import com.uttarooque73.netguard.network.NetworkInfo
 import org.json.JSONArray
 import org.json.JSONObject
 
 class MonitorBaselineStore(context: Context) {
     private val preferences = context.getSharedPreferences("netguard_monitor_baseline", Context.MODE_PRIVATE)
+
+    fun saveNetwork(network: NetworkInfo) {
+        val json = JSONObject().apply {
+            putOpt("interfaceName", network.interfaceName)
+            putOpt("localAddress", network.localAddress)
+            putOpt("gatewayAddress", network.gatewayAddress)
+            putOpt("subnet", network.subnet)
+            put("dnsServers", JSONArray(network.dnsServers))
+            putOpt("ssid", network.ssid)
+            putOpt("bssid", network.bssid)
+            putOpt("wifiSecurity", network.wifiSecurity)
+        }
+        preferences.edit().putString("network", json.toString()).apply()
+    }
+
+    fun loadNetwork(): NetworkInfo? {
+        val raw = preferences.getString("network", null) ?: return null
+        return runCatching {
+            val value = JSONObject(raw)
+            NetworkInfo(
+                interfaceName = value.optString("interfaceName").takeIf { it.isNotBlank() && it != "null" },
+                localAddress = value.optString("localAddress").takeIf { it.isNotBlank() && it != "null" },
+                gatewayAddress = value.optString("gatewayAddress").takeIf { it.isNotBlank() && it != "null" },
+                subnet = value.optString("subnet").takeIf { it.isNotBlank() && it != "null" },
+                dnsServers = value.optJSONArray("dnsServers")?.let { array -> List(array.length()) { array.getString(it) } } ?: emptyList(),
+                ssid = value.optString("ssid").takeIf { it.isNotBlank() && it != "null" },
+                bssid = value.optString("bssid").takeIf { it.isNotBlank() && it != "null" },
+                wifiSecurity = value.optString("wifiSecurity").takeIf { it.isNotBlank() && it != "null" }
+            )
+        }.getOrNull()
+    }
 
     fun saveDevices(devices: List<DiscoveredDevice>) {
         preferences.edit().putString("devices", JSONArray(devices.map { it.ipAddress }).toString()).apply()
