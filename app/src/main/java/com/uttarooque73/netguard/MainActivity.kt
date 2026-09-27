@@ -1872,8 +1872,57 @@ private fun MobileSecuritySection(
         if (snapshot == null) {
             Text("Mobile security audit has not run yet.")
         } else {
-            snapshot.checks.forEach { check ->
-                MobileSecurityCheckCard(check)
+            val pass = snapshot.checks.count { it.status == MobileCheckStatus.PASS }
+            val review = snapshot.checks.count { it.status == MobileCheckStatus.REVIEW }
+            val fail = snapshot.checks.count { it.status == MobileCheckStatus.FAIL }
+            val unavailable = snapshot.checks.count { it.status == MobileCheckStatus.NOT_AVAILABLE }
+            var statusFilter by remember { mutableStateOf("ALL") }
+            val visibleChecks = snapshot.checks.filter {
+                statusFilter == "ALL" || it.status.name == statusFilter
+            }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Posture summary", style = MaterialTheme.typography.titleMedium)
+                    Text("${fail} FAIL • ${review} REVIEW • ${pass} PASS • ${unavailable} unavailable")
+                    Text(
+                        when {
+                            fail > 0 -> "Immediate attention is required for one or more device security controls."
+                            review > 0 -> "Review the highlighted controls; REVIEW is a signal for investigation, not proof of compromise."
+                            else -> "No failing or review signals were reported by the current audit."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("ALL", "FAIL", "REVIEW", "PASS", "NOT_AVAILABLE").forEach { filter ->
+                    FilterChip(
+                        selected = statusFilter == filter,
+                        onClick = { statusFilter = filter },
+                        label = { Text(if (filter == "ALL") "All" else filter.replace("_", " ")) }
+                    )
+                }
+            }
+
+            Text(
+                "${visibleChecks.size} checks shown • generated " +
+                    java.text.DateFormat.getDateTimeInstance().format(java.util.Date(snapshot.generatedAtEpochMs)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (visibleChecks.isEmpty()) {
+                Text("No checks match this filter.")
+            } else {
+                visibleChecks.forEach { check ->
+                    MobileSecurityCheckCard(check)
+                }
             }
         }
     }
