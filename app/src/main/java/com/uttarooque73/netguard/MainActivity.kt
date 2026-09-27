@@ -1196,10 +1196,11 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
+enum class Screen { Dashboard, Profile, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 private fun screenTitle(screen: Screen): String = when (screen) {
     Screen.Dashboard -> "Overview"
+    Screen.Profile -> "My Profile"
     Screen.CommandCenter -> "Security Command Center"
     Screen.Network -> "Network"
     Screen.Devices -> "Devices"
