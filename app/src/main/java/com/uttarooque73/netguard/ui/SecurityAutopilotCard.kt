@@ -29,7 +29,6 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
     var assessment by remember(network,services,apps,mobile,drifts){mutableStateOf(SecurityAutopilotEngine.assess(network,services,apps,mobile,drifts))}
     var apkReview by remember{mutableStateOf<ApkSecurityReview?>(null)}
     var selectedAction by remember{mutableStateOf<SecurityAction?>(null)}
-    var loading by remember{mutableStateOf(false)}
     val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri:Uri?->
         if(uri!=null) runCatching{
             val apkFile=java.io.File(context.cacheDir,"netguard-review.apk")
@@ -67,7 +66,7 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
                         Text("Evidence: "+action.evidence,style=MaterialTheme.typography.bodySmall)
                         Text("Do: "+action.action,style=MaterialTheme.typography.bodySmall)
                         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                            Button(onClick={
+                            LoadingButton(onClick={
                                 selectedAction=action
                                 when{
                                     action.id.startsWith("mobile-")&&action.id.contains("USB") -> context.startActivity(Intent(Settings.ACTION_DEVELOPMENT_SETTINGS))
@@ -78,15 +77,15 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
                                     else -> context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
                                 }
                             }){Text("Fix / Review")}
-                            TextButton(onClick={selectedAction=action}){Text("Why?")}
+                            LoadingTextButton(onClick={selectedAction=action}){Text("Why?")}
                         }
                         if(selectedAction?.id==action.id)Text("Verify: "+action.verification,style=MaterialTheme.typography.bodySmall)
                     }
                 }
             }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                Button(onClick={loading=true;onRunCheck();loading=false;refresh()}){Text(if(loading)"Checking…" else "Run Security Autopilot")}
-                OutlinedButton(onClick={picker.launch("application/vnd.android.package-archive")}){Text("Review APK")}
+                LoadingButton(onClick={onRunCheck}){Text("Run Security Autopilot")}
+                LoadingButton(onClick={picker.launch("application/vnd.android.package-archive")}){Text("Review APK")}
             }
             Text("Checked signals: "+assessment.checkedSignals,style=MaterialTheme.typography.bodySmall)
         }
