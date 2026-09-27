@@ -69,7 +69,7 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
                             LoadingButton(onClick={
                                 selectedAction=action
                                 when{
-                                    action.id.startsWith("mobile-")&&action.id.contains("USB") -> context.startActivity(Intent(Settings.ACTION_DEVELOPMENT_SETTINGS))
+                                    action.id.startsWith("mobile-")&&action.id.contains("USB") -> context.startActivity(Intent(Settings.ACTION_SETTINGS))
                                     action.id.startsWith("app-") -> {
                                         val pkg=action.id.removePrefix("app-")
                                         context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:$pkg")))
