@@ -684,7 +684,8 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun addContact(contact: SavedContact) {
-        if (savedContacts.none { it.phoneNumber == contact.phoneNumber }) {
+        val normalized = UserContactStore.normalizePhone(contact.phoneNumber)
+        if (savedContacts.none { UserContactStore.normalizePhone(it.phoneNumber) == normalized }) {
             savedContacts = savedContacts + userContactStore.add(contact.name, contact.phoneNumber)
         }
     }
@@ -2153,7 +2154,7 @@ private fun AdvancedSecuritySection(
                         dns.gateway == null -> "Gateway unavailable"
                         dns.gatewayChanged -> "Gateway changed"
                         dns.gatewayResolved -> "Gateway reachable"
-                        else -> "Gateway could not be resolved"
+                        else -> "Gateway unreachable"
                     }
                     Text(
                         gatewayStatus,
