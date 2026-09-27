@@ -1,8 +1,11 @@
 package com.uttarooque73.netguard.features.web
 
 import java.net.HttpURLConnection
+import java.net.InetSocketAddress
 import java.net.URI
 import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.SSLSocketFactory
 
 data class TlsAuditResult(
     val url: String,
@@ -42,6 +45,7 @@ object TlsHttpSecurityAudit {
             connection.requestMethod = "GET"
             connection.connect()
             val cert = connection.serverCertificates.firstOrNull() as? java.security.cert.X509Certificate
+            val socketEvidence = runCatching { inspectTlsSocket(uri.host, uri.port.takeIf { it > 0 } ?: 443, timeoutMs) }.getOrNull()
             val now = System.currentTimeMillis()
             val daysUntilExpiry = cert?.let { ((it.notAfter.time - now) / 86_400_000L) }
             val certificateExpired = cert?.let { it.notAfter.time <= now }
@@ -49,8 +53,8 @@ object TlsHttpSecurityAudit {
                 add("HTTPS endpoint reachable.")
                 certificateExpired?.let { add(if (it) "Certificate is expired." else "Certificate is currently within its validity period.") }
                 daysUntilExpiry?.let { add("Certificate expires in approximately $it day(s).") }
-                add("Negotiated cipher suite: " + connection.cipherSuite)
-                add("TLS protocol: not exposed by Android HttpsURLConnection; verify server TLS configuration separately.")
+                add("Negotiated cipher suite: " + (socketEvidence?.cipherSuite ?: connection.cipherSuite))
+                add("TLS protocol: " + (socketEvidence?.protocol ?: "not available"))
                 cert?.let {
                     add("Certificate subject: " + it.subjectX500Principal.name)
                     add("Certificate issuer: " + it.issuerX500Principal.name)
@@ -60,8 +64,8 @@ object TlsHttpSecurityAudit {
             TlsAuditResult(
                 url = url,
                 reachable = true,
-                protocol = null,
-                cipherSuite = connection.cipherSuite,
+                protocol = socketEvidence?.protocol,
+                cipherSuite = socketEvidence?.cipherSuite ?: connection.cipherSuite,
                 certificateSubject = cert?.subjectX500Principal?.name,
                 certificateIssuer = cert?.issuerX500Principal?.name,
                 expiresAtEpochMs = cert?.notAfter?.time,
@@ -79,6 +83,20 @@ object TlsHttpSecurityAudit {
             connection.disconnect()
         }
     }
+
+    private fun inspectTlsSocket(host: String, port: Int, timeoutMs: Int): TlsSocketEvidence {
+        val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+        val socket = factory.createSocket() as SSLSocket
+        return socket.use {
+            it.connect(InetSocketAddress(host, port), timeoutMs)
+            it.soTimeout = timeoutMs
+            it.sslParameters = it.sslParameters.apply { endpointIdentificationAlgorithm = "HTTPS" }
+            it.startHandshake()
+            TlsSocketEvidence(it.session.protocol, it.session.cipherSuite)
+        }
+    }
+
+    private data class TlsSocketEvidence(val protocol: String, val cipherSuite: String)
 
     fun inspectHttp(url: String, timeoutMs: Int = 3000): HttpSecurityResult {
         require(url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true))
