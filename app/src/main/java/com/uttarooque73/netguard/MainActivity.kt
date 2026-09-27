@@ -166,6 +166,7 @@ import com.uttarooque73.netguard.ui.CallProtectionScreen
 import com.uttarooque73.netguard.ui.LoadingButton
 import com.uttarooque73.netguard.ui.LoadingTextButton
 import com.uttarooque73.netguard.ui.SecurityCenterScreen
+import com.uttarooque73.netguard.ui.AdTrackerGuardScreen
 import com.uttarooque73.netguard.ui.requestCallScreeningRole
 import com.uttarooque73.netguard.security.CallProtectionStore
 
@@ -1308,7 +1309,7 @@ fun NetGuardApp(
                     Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
                     HorizontalDivider()
                     val screens = listOf(
-                        Screen.Dashboard, Screen.SecurityCenter, Screen.Profile, Screen.Contacts, Screen.CallProtection, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
+                        Screen.Dashboard, Screen.SecurityCenter, Screen.AdTrackerGuard, Screen.Profile, Screen.Contacts, Screen.CallProtection, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
                         Screen.Findings, Screen.Remediation, Screen.Monitoring, Screen.Baseline,
                         Screen.Mobile, Screen.Wifi, Screen.Web, Screen.Policies, Screen.Timeline,
                         Screen.Reports, Screen.Administration, Screen.Learning, Screen.Advanced
@@ -1325,7 +1326,9 @@ fun NetGuardApp(
             }
         ) {
             Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { LoadingTextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
-            if (selectedScreen == Screen.SecurityCenter) {
+            if (selectedScreen == Screen.AdTrackerGuard) {
+    AdTrackerGuardScreen()
+} else if (selectedScreen == Screen.SecurityCenter) {
                 SecurityCenterScreen(networkInfo, devices, services, appSecurityChecks, mobileSecurity, trustedBaseline, securityDrifts, riskTrend, onRunFullSecurityCheck, onCaptureTrustedBaseline, { onExportReport("package") })
             } else if (selectedScreen == Screen.Profile && userProfile != null) {
                 ProfileScreen(userProfile!!, profileName, selectedProfileImage, authError, onProfileNameChange, onSelectProfileImage, onSaveProfile, onLogout)
@@ -1788,11 +1791,12 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, SecurityCenter, Profile, Contacts, CallProtection, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
+enum class Screen { Dashboard, SecurityCenter, AdTrackerGuard, Profile, Contacts, CallProtection, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 private fun screenTitle(screen: Screen): String = when (screen) {
     Screen.Dashboard -> "Overview"
     Screen.SecurityCenter -> "Security Center"
+    Screen.AdTrackerGuard -> "Ad & Tracker Guard"
     Screen.Profile -> "My Profile"
     Screen.Contacts -> "Mobile Numbers"
     Screen.CallProtection -> "Call Protection"
