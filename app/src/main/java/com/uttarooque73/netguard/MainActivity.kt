@@ -382,7 +382,7 @@ class MainActivity : FragmentActivity() {
             it.category == category &&
                 it.title == title &&
                 it.detail == detail &&
-                now - it.timestamp <= duplicateWindowMs
+                now - it.createdAtEpochMs <= duplicateWindowMs
         } == true
         if (duplicate) return
         timelineEvents = (timelineEvents + SecurityTimelineEvent(java.util.UUID.randomUUID().toString(), category, title, detail, now)).takeLast(200)
