@@ -50,8 +50,7 @@ object WebSecurityPolicy {
                 "Set an explicit Referrer-Policy appropriate for the application."
             )
         }
-        h["set-cookie"]?.split("
-").orEmpty().forEachIndexed { index, cookie ->
+        h["set-cookie"]?.let { listOf(it) }.orEmpty().forEachIndexed { index, cookie ->
             if (!cookie.contains("Secure", ignoreCase = true)) {
                 findings += WebSecurityFinding(
                     "WEB-COOKIE-SECURE-" + (index + 1), "MEDIUM",
