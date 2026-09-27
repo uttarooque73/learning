@@ -57,7 +57,7 @@ object MonitorEngine {
         val removed = previous.filter { key(it) !in currentServices }.map {
             MonitorEvent(UUID.randomUUID().toString(), MonitorEventType.SERVICE_REMOVED, it.ipAddress, "Previously observed service is no longer reachable: TCP/${it.port} ${it.serviceName}")
         }
-        return added + removed
+        return added + changed + removed
     }
 
     private fun key(service: DiscoveredService): String = "${service.ipAddress}|${service.protocol.uppercase()}|${service.port}"
