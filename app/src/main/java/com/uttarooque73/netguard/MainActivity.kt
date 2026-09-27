@@ -144,6 +144,9 @@ import com.uttarooque73.netguard.ui.ContactNumbersScreen
 import com.uttarooque73.netguard.ui.LoginScreen
 import com.uttarooque73.netguard.ui.SignUpScreen
 import com.uttarooque73.netguard.ui.ProfileScreen
+import com.uttarooque73.netguard.ui.CallProtectionScreen
+import com.uttarooque73.netguard.ui.requestCallScreeningRole
+import com.uttarooque73.netguard.security.CallProtectionStore
 
 class MainActivity : FragmentActivity() {
     private var networkInfo by mutableStateOf<NetworkInfo?>(null)
@@ -195,6 +198,9 @@ class MainActivity : FragmentActivity() {
     private lateinit var appLockPolicyStore: AppLockPolicyStore
     private lateinit var userAccountStore: UserAccountStore
     private lateinit var userContactStore: UserContactStore
+    private lateinit var callProtectionStore: CallProtectionStore
+    private var callProtectionLogs by mutableStateOf<List<com.uttarooque73.netguard.security.CallProtectionLog>>(emptyList())
+    private var blockedNumbers by mutableStateOf<Set<String>>(emptySet())
     private var savedContacts by mutableStateOf<List<SavedContact>>(emptyList())
     private var deviceContacts by mutableStateOf<List<SavedContact>>(emptyList())
     private var contactError by mutableStateOf<String?>(null)
@@ -239,6 +245,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         userAccountStore = UserAccountStore(this)
         userContactStore = UserContactStore(this)
+        callProtectionStore = CallProtectionStore(this)
+        callProtectionLogs = callProtectionStore.logs()
+        blockedNumbers = callProtectionStore.blockedNumbers()
         savedContacts = userContactStore.load()
         authenticated = userAccountStore.isLoggedIn()
         userProfile = userAccountStore.loadProfile()
@@ -580,6 +589,11 @@ class MainActivity : FragmentActivity() {
         runCatching { deviceContacts = UserContactStore.readPhoneContacts(this); contactError = null }
             .onFailure { contactError = it.message ?: "Unable to read contacts." }
     }
+
+    private fun refreshCallProtection() { callProtectionLogs = callProtectionStore.logs(); blockedNumbers = callProtectionStore.blockedNumbers() }
+
+    private fun blockNumber(number: String) { callProtectionStore.block(number); refreshCallProtection() }
+    private fun unblockNumber(number: String) { callProtectionStore.unblock(number); refreshCallProtection() }
 
     private fun openContactNumbers() {
         selectedScreen = Screen.Contacts
@@ -1201,6 +1215,7 @@ private fun Dashboard(
             }
             Screen.CommandCenter -> SecurityCommandCenterScreen(networkInfo, devices, services, findings, monitorEvents, wifiTrustResult, onExportInvestigation, onRunCommandCenterProfile)
             Screen.Contacts -> ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
+            Screen.CallProtection -> CallProtectionScreen(callProtectionLogs, blockedNumbers, ::blockNumber, ::unblockNumber, { callProtectionStore.clearLogs(); refreshCallProtection() }, { requestCallScreeningRole(this) }, android.app.role.RoleManager::class.java.let { getSystemService(it)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true })
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
@@ -1236,12 +1251,13 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, Profile, Contacts, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
+enum class Screen { Dashboard, Profile, Contacts, CallProtection, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 private fun screenTitle(screen: Screen): String = when (screen) {
     Screen.Dashboard -> "Overview"
     Screen.Profile -> "My Profile"
     Screen.Contacts -> "Mobile Numbers"
+    Screen.CallProtection -> "Call Protection"
     Screen.CommandCenter -> "Security Command Center"
     Screen.Network -> "Network"
     Screen.Devices -> "Devices"
