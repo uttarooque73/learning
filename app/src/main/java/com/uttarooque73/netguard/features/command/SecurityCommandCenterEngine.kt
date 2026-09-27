@@ -85,7 +85,7 @@ object CommandCenterEngine {
             "change" in q || "changed" in q -> if (events.isEmpty()) "No monitoring changes are currently stored." else "\${events.size} monitoring change event(s) are stored. Latest: \${events.last().detail}"
             "device" in q -> "The current authorized inventory contains \${devices.size} device(s)."
             "service" in q || "port" in q -> "The current authorized inventory contains \${services.count { it.reachable }} reachable service(s)."
-            "finding" in q -> if (findings.isEmpty()) "No findings are currently stored." else "There are \${findings.size} finding(s). Highest severity: \${findings.maxByOrNull { it.severity.ordinal }?.severity}."
+            "finding" in q -> if (findings.isEmpty()) "No findings are currently stored." else "There are \${findings.size} finding(s). Highest severity: \${findings.minByOrNull { it.severity.ordinal }?.severity}."
             "network" in q || "wifi" in q -> "Current network: \${network?.ssid ?: "not inspected"}, gateway \${network?.gatewayAddress ?: "unavailable"}, local address \${network?.localAddress ?: "unavailable"}."
             else -> "I can answer from stored evidence about the network, devices, services, findings, score, and monitoring changes."
         }
