@@ -35,4 +35,15 @@ class MonitorEngineTest {
         assertEquals(0, MonitorEngine.compareNetwork(network, network.copy()).size)
     }
 
+    @Test fun detectsDeviceMetadataChange() {
+        val old = listOf(DiscoveredDevice("192.168.1.20", "old", true))
+        val current = listOf(DiscoveredDevice("192.168.1.20", "new", true))
+        assertEquals(MonitorEventType.DEVICE_CHANGED, MonitorEngine.compareDevices(old, current).single().type)
+    }
+
+    @Test fun detectsServiceMetadataChange() {
+        val old = listOf(DiscoveredService("192.168.1.20", 80, serviceName = "HTTP", reachable = true))
+        val current = listOf(DiscoveredService("192.168.1.20", 80, serviceName = "Web", reachable = true))
+        assertEquals(MonitorEventType.SERVICE_CHANGED, MonitorEngine.compareServices(old, current).single().type)
+    }
 }
