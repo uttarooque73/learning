@@ -148,3 +148,37 @@ object AdvancedReportExporter {
             line("Policy " + it.policy.id + ": " + if (it.passed) "PASS" else "FAIL")
             line(it.policy.title + " — " + it.evidence)
         }
+
+        document.finishPage(page)
+        file.outputStream().use { output -> document.writeTo(output) }
+        document.close()
+        return file
+    }
+
+    fun packageAudit(context: Context, snapshot: AuditSnapshot): File {
+        val file = File(context.cacheDir, "netguard-audit-" + snapshot.id + ".zip")
+        val pdf = pdf(context, snapshot)
+        ZipOutputStream(file.outputStream().buffered()).use { zip ->
+            fun addText(name: String, value: String) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(value.toByteArray(Charsets.UTF_8))
+                zip.closeEntry()
+            }
+            fun addFile(name: String, source: File) {
+                zip.putNextEntry(ZipEntry(name))
+                source.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
+            addText("audit.json", json(snapshot))
+            addText("audit.csv", csv(snapshot))
+            addFile("audit.pdf", pdf)
+            addText(
+                "README.txt",
+                "NetGuard audit package schema " + SCHEMA_VERSION +
+                    "\nThe package contains JSON, CSV and PDF representations of the same audit snapshot."
+            )
+        }
+        pdf.delete()
+        return file
+    }
+}
