@@ -25,7 +25,8 @@ object SecurityAutopilotEngine {
         if(network==null)add("network-unavailable","Network security evidence unavailable",SecurityActionPriority.MEDIUM,"NetGuard cannot validate the current network path without network evidence.","No active network evidence is available.","Run a Full Security Check while connected to the network you want to assess.","A subsequent audit should contain network, gateway and DNS evidence.")
         if(services.any{it.reachable&&(it.port==23||it.port==445)})add("network-exposure","Sensitive network service exposed",SecurityActionPriority.HIGH,"A commonly sensitive service is reachable on the audited network.","Reachable TCP/23 or TCP/445 service detected.","Disable the service if it is not required and restrict access at the host/router.","Re-run service discovery and confirm the service is no longer reachable.")
         drifts.filter{it.severity=="HIGH"}.take(5).forEach{drift->add("drift-"+drift.id,drift.title,SecurityActionPriority.HIGH,"A high-severity change was detected relative to the trusted baseline.","${drift.before} → ${drift.after}",drift.recommendedAction,"Capture fresh evidence and re-run the security check.")}
-        val deductions=actions.fold(0){total,it->total+when(it.priority){SecurityActionPriority.HIGH->18;SecurityActionPriority.MEDIUM->8;SecurityActionPriority.LOW->3}}\n        val score=(100-deductions).coerceIn(0,100)
+        val deductions=actions.fold(0){total,it->total+when(it.priority){SecurityActionPriority.HIGH->18;SecurityActionPriority.MEDIUM->8;SecurityActionPriority.LOW->3}}
+        val score=(100-deductions).coerceIn(0,100)
         return AutopilotAssessment(score,actions.sortedWith(compareBy<SecurityAction>{it.priority.ordinal}.thenBy{it.title}),actions.size,actions.count{it.priority==SecurityActionPriority.HIGH})
     }
 
