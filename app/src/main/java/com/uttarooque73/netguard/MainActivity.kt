@@ -1,4 +1,5 @@
 package com.uttarooque73.netguard
+import com.uttarooque73.netguard.ui.GuestProfileScreen
 
 import android.Manifest
 import android.content.pm.PackageManager
