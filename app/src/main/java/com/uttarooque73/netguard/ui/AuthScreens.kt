@@ -132,7 +132,20 @@ fun ProfileScreen(
         bitmap?.let {
             Image(it.asImageBitmap(), null, Modifier.size(112.dp).clip(CircleShape), contentScale = ContentScale.Crop)
         }
-        Text("Account: " + profile.email)
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Account security", style = MaterialTheme.typography.titleMedium)
+                Text("Email: " + profile.email)
+                Text(
+                    if (displayName.isNotBlank()) "Profile name: configured" else "Profile name: missing",
+                    color = if (displayName.isNotBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                )
+                Text(
+                    if (selectedImage != null || profile.imagePath != null) "Profile image: configured" else "Profile image: optional",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         OutlinedTextField(displayName, onDisplayNameChange, label = { Text("Display name") }, modifier = Modifier.fillMaxWidth())
         LoadingButton(onClick = onSelectImage) { Text("Choose profile image") }
         Card(Modifier.fillMaxWidth()) {
@@ -142,7 +155,7 @@ fun ProfileScreen(
             }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        LoadingButton(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
+        LoadingButton(onClick = onSave, modifier = Modifier.fillMaxWidth(), enabled = displayName.trim().isNotBlank()) { Text("Save profile") }
         LoadingTextButton(onClick = onLogout) { Text("Log out") }
     }
 }
