@@ -446,7 +446,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun launchAuditPackageImport() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Import audit package")
             .setMessage("Importing replaces the current audit view with the selected package and saves it to local audit history. Continue?")
             .setNegativeButton("Cancel", null)
