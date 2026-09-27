@@ -78,9 +78,7 @@ object InstalledAppSecurityAudit {
             val versionName = pkg.versionName
             val versionCode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode else @Suppress("DEPRECATION") pkg.versionCode.toLong()
             val targetSdk = appInfo.targetSdkVersion
-            val requested = pkg.requestedPermissions.orEmpty()
-                .filter { it in dangerousPermissions }
-                .distinct()
+            val requested = classifyDangerousPermissions(pkg.requestedPermissions.orEmpty())
 
             val evidence = buildList {
                 if (debuggable) add("Application is marked debuggable.")
@@ -115,6 +113,11 @@ object InstalledAppSecurityAudit {
             )
         }.sortedBy { it.appName.lowercase() }
     }
+
+    internal fun classifyDangerousPermissions(permissions: List<String>): List<String> =
+        permissions.filter { it in dangerousPermissions }.distinct()
+
+    internal fun dangerousPermissionCatalog(): Set<String> = dangerousPermissions
 
     private fun exportedCount(pkg: PackageInfo): Int {
         var count = 0
