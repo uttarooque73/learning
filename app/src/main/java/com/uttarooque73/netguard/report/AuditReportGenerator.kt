@@ -9,7 +9,8 @@ object AuditReportGenerator {
         val lines = mutableListOf<String>()
         lines += "NETGUARD SECURITY AUDIT REPORT"
         lines += "Audit ID: ${snapshot.id}"
-        lines += "Created: ${snapshot.createdAtEpochMs}"
+        lines += "Created: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", java.util.Locale.US).format(java.util.Date(snapshot.createdAtEpochMs))
+        lines += "Created epoch ms: ${snapshot.createdAtEpochMs}"
         lines += ""
         lines += "EXECUTIVE SUMMARY"
         lines += "Risk score: ${risk}/100"
