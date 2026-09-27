@@ -29,6 +29,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -51,11 +53,13 @@ fun LoginScreen(
     onLogin: () -> Unit,
     onCreateAccount: () -> Unit
 ) {
+    var showPassword by remember { mutableStateOf(false) }
     AuthShell("Welcome to NetGuard") {
-        OutlinedTextField(email, onEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(password, onPasswordChange, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(email, onEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(password, onPasswordChange, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation())
+        TextButton(onClick = { showPassword = !showPassword }) { Text(if (showPassword) "Hide password" else "Show password") }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        LoadingButton(onClick = onLogin, modifier = Modifier.fillMaxWidth()) { Text("Login") }
+        LoadingButton(onClick = onLogin, modifier = Modifier.fillMaxWidth(), enabled = email.isNotBlank() && password.isNotBlank()) { Text("Login") }
         LoadingTextButton(onClick = onCreateAccount) { Text("Create account") }
     }
 }
@@ -74,13 +78,15 @@ fun SignUpScreen(
     onSignUp: () -> Unit,
     onLogin: () -> Unit
 ) {
+    var showPassword by remember { mutableStateOf(false) }
     AuthShell("Create your NetGuard account") {
-        OutlinedTextField(displayName, onDisplayNameChange, label = { Text("Display name") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(email, onEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(password, onPasswordChange, label = { Text("Password (8+ characters)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-        OutlinedTextField(confirmPassword, onConfirmPasswordChange, label = { Text("Confirm password") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(displayName, onDisplayNameChange, label = { Text("Display name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(email, onEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(password, onPasswordChange, label = { Text("Password (8+ characters)") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation())
+        OutlinedTextField(confirmPassword, onConfirmPasswordChange, label = { Text("Confirm password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation())
+        TextButton(onClick = { showPassword = !showPassword }) { Text(if (showPassword) "Hide passwords" else "Show passwords") }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        LoadingButton(onClick = onSignUp, modifier = Modifier.fillMaxWidth()) { Text("Create account") }
+        LoadingButton(onClick = onSignUp, modifier = Modifier.fillMaxWidth(), enabled = displayName.isNotBlank() && email.isNotBlank() && password.length >= 8 && password == confirmPassword) { Text("Create account") }
         LoadingTextButton(onClick = onLogin) { Text("Already have an account? Login") }
     }
 }
