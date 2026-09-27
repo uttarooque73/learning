@@ -14,7 +14,7 @@ object ConsumerSecurityEngine {
     fun posture(findings: List<Finding>, mobile: MobileSecuritySnapshot?, network: NetworkInfo?, checkedAtEpochMs: Long): SecurityPosture {
         val recommendations = buildList {
             findings.sortedBy { severityRank(it.severity) }.take(5).forEach { finding ->
-                add(SecurityRecommendation("finding:" + finding.id, finding.title, finding.explanation, finding.remediation.joinToString(" "), severityRank(finding.severity)))
+                add(SecurityRecommendation("finding:" + finding.id, finding.title, finding.explanation, finding.remediation, severityRank(finding.severity)))
             }
             mobile?.checks?.filter { it.status == MobileCheckStatus.FAIL }?.take(3)?.forEach { check ->
                 add(SecurityRecommendation("mobile:" + check.id, check.title, check.evidence, check.remediation.joinToString(" "), 1))
