@@ -2104,10 +2104,46 @@ private fun AdvancedSecuritySection(
         }
 
         Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("DNS & Gateway", style = MaterialTheme.typography.titleMedium)
-                Text(dns?.evidence?.joinToString(" ") ?: "Not audited")
-                dns?.remediation?.forEach { Text("Fix: " + it) }
+                if (dns == null) {
+                    Text("Not audited. Run the security audit to inspect the active network path.")
+                } else {
+                    val gatewayStatus = when {
+                        dns.gateway == null -> "Gateway unavailable"
+                        dns.gatewayChanged -> "Gateway changed"
+                        dns.gatewayResolved -> "Gateway reachable"
+                        else -> "Gateway could not be resolved"
+                    }
+                    Text(
+                        gatewayStatus,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (dns.gatewayChanged || dns.gateway == null) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary
+                    )
+                    Text("Gateway: " + (dns.gateway ?: "Unavailable"))
+                    Text("DNS servers: " + dns.dnsServers.ifEmpty { listOf("Unavailable") }.joinToString())
+                    Text(
+                        "Private DNS: " + when (dns.privateDnsActive) {
+                            true -> "Active" + (dns.privateDnsServerName?.let { " ($it)" } ?: "")
+                            false -> "Inactive"
+                            null -> "Not available on this Android version"
+                        }
+                    )
+                    if (dns.gatewayChanged) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                            Text(
+                                "The default gateway changed since the previous audit. Verify that you are still on the expected network.",
+                                Modifier.padding(12.dp),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                    Text("Evidence", style = MaterialTheme.typography.labelLarge)
+                    dns.evidence.forEach { Text("• " + it) }
+                    Text("Recommended actions", style = MaterialTheme.typography.labelLarge)
+                    dns.remediation.forEach { Text("• " + it) }
+                }
             }
         }
 
