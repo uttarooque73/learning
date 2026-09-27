@@ -103,6 +103,7 @@ import com.uttarooque73.netguard.features.policy.PolicyResult
 import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
 import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
+import com.uttarooque73.netguard.features.command.SecurityCommandCenterScreen
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 import com.uttarooque73.netguard.features.reporting.AuditPackageImporter
 import com.uttarooque73.netguard.features.intelligence.NetworkTopology
@@ -830,7 +831,7 @@ fun NetGuardApp(
                     Text("NETGUARD", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(24.dp))
                     HorizontalDivider()
                     val screens = listOf(
-                        Screen.Dashboard, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
+                        Screen.Dashboard, Screen.CommandCenter, Screen.Network, Screen.Devices, Screen.Services, Screen.Intelligence,
                         Screen.Findings, Screen.Remediation, Screen.Monitoring, Screen.Baseline,
                         Screen.Mobile, Screen.Wifi, Screen.Web, Screen.Policies, Screen.Timeline,
                         Screen.Reports, Screen.Administration, Screen.Learning, Screen.Advanced
@@ -1025,6 +1026,7 @@ private fun Dashboard(
                     }
                 }
             }
+            Screen.CommandCenter -> SecurityCommandCenterScreen(networkInfo, devices, services, findings, monitorEvents, wifiTrustResult)
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
@@ -1060,10 +1062,11 @@ private fun Dashboard(
     }
 }
 
-enum class Screen { Dashboard, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
+enum class Screen { Dashboard, CommandCenter, Network, Devices, Services, Intelligence, Findings, Remediation, Monitoring, Baseline, Mobile, Wifi, Web, Policies, Timeline, Reports, Administration, Learning, Advanced }
 
 private fun screenTitle(screen: Screen): String = when (screen) {
     Screen.Dashboard -> "Overview"
+    Screen.CommandCenter -> "Security Command Center"
     Screen.Network -> "Network"
     Screen.Devices -> "Devices"
     Screen.Services -> "Services"
