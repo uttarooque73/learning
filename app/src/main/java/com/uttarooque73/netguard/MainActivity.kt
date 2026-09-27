@@ -951,7 +951,21 @@ private fun Dashboard(
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
             Screen.Intelligence -> IntelligenceScreen(devices, services, topology, dnsSecurity, vulnerabilityCandidates, riskTrend)
-            Screen.Findings -> FindingsFeatureScreen(findings) { onSelectFinding(it) }
+            Screen.Findings -> {
+                if (selectedFinding != null) {
+                    FindingDetail(
+                        finding = selectedFinding,
+                        onClose = onSelectFinding,
+                        remediationRecords = remediationRecords,
+                        onStartRemediation = onStartRemediation,
+                        verificationResults = verificationResults,
+                        verifyingFindingId = verifyingFindingId,
+                        onVerifyFinding = onVerifyFinding
+                    )
+                } else {
+                    FindingsFeatureScreen(findings, onSelectFinding)
+                }
+            }
             Screen.Remediation -> RemediationFeatureScreen(findings, remediationRecords, onStartRemediation, verificationResults, onVerifyFinding, verifyingFindingId)
             Screen.Monitoring -> FeatureListScreen("Monitoring", "Local inventory change monitoring.") { MonitoringSection(monitoring, monitorEvents, onCheckChanges) }
             Screen.Baseline -> FeatureListScreen("Baseline", "Evidence-backed local security baseline evaluation.") { BaselineSection(baselineResults, onEvaluateBaseline) }
