@@ -24,6 +24,10 @@ object IncidentTimelineEngine {
             val category = event.category.lowercase()
             val title = event.title.lowercase()
             val type = when {
+                category.contains("baseline") && (title.contains("network") || title.contains("dns") || title.contains("wi-fi") || title.contains("gateway")) -> IncidentEventType.NETWORK
+                category.contains("baseline") && (title.contains("device") || title.contains("service")) -> IncidentEventType.DEVICE
+                category.contains("baseline") && title.contains("application") -> IncidentEventType.APP
+                category.contains("baseline") -> IncidentEventType.SECURITY_CHECK
                 category.contains("network") || category.contains("wifi") || category.contains("dns") -> IncidentEventType.NETWORK
                 category.contains("device") || category.contains("service") || category.contains("command-center") -> IncidentEventType.DEVICE
                 category.contains("app") || category.contains("privacy") || title.contains("application") -> IncidentEventType.APP
