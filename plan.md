@@ -316,21 +316,22 @@ Phase 11 — complete for current MVP:
 - dashboard administration section
 - no backend/account synchronization dependency yet
 
-Phase 12 — hardening foundation complete:
+Phase 12 — hardening and automated release validation complete:
 - mobile/cellular security posture audit
 - Android device security feature checks
 - evidence-backed mobile remediation and verification guidance
 - Android backup disabled
 - cleartext traffic disabled by default
 - privacy/security policy definitions
-- release checks and unit test
+- release checks and unit tests
 - release hardening checklist
 - bounded discovery/service audit behavior documented
+- CI validation passed for unit tests, lint, debug APK assembly, and release build
 
 Remaining release work:
-- physical-device compatibility testing
-- runtime permission review
-- release build validation
+- physical-device compatibility testing across supported Android versions
+- runtime permission review on target devices
+- signed production-release configuration/verification and final regression QA
 
 
 
@@ -355,11 +356,11 @@ Status legend:
 | 5 — Findings & Risk Dashboard | **Completed** | Explainable score, severity breakdown, finding detail, risk trend | Continue UI/UX polish and trend coverage |
 | 6 — Remediation Engine | **Completed** | Guided playbooks, remediation tracking, verification guidance; no remote auto-modification | More platform/device-specific guidance |
 | 7 — Verification & Before/After | **Completed** | Rechecks, before/after evidence, verification status/history | More verification adapters where technically safe |
-| 8 — Reports & Audit History | **Completed — MVP** | Snapshot history, full device/service persistence, findings/remediation/verification, text/JSON/CSV/PDF/ZIP, import and active restoration | Finish custom-policy history persistence validation; import confirmation/MIME UX |
+| 8 — Reports & Audit History | **Completed — MVP** | Snapshot history, full device/service persistence, findings/remediation/verification, custom-policy data, text/JSON/CSV/PDF/ZIP, import and active restoration | Additional long-term history/storage validation |
 | 9 — Monitoring & Alerts | **Completed — MVP** | Scheduled WorkManager monitoring, configurable interval, device/service change detection, event history, notifications | Production hardening, permission failure UX, broader network-change coverage |
 | 10 — Baselines & Compliance | **Completed — MVP** | Baseline model/store/evaluator, secure-home baseline, PASS/FAIL/REVIEW | Framework mappings and richer configurable checklists |
 | 11 — Advanced Administration | **Completed — MVP** | Network profiles, asset metadata, admin events, dedicated administration UI | Team/backend synchronization remains intentionally pending |
-| 12 — Security, Performance & Release | **Foundation completed** | App hardening, secure storage, app lock, permission/security checks, release checklist, bounded discovery | Physical-device compatibility, runtime permission review, release signing/build validation |
+| 12 — Security, Performance & Release | **Automated validation completed** | App hardening, secure storage, app lock, permission/security checks, release checklist, bounded discovery, CI unit/lint/debug/release validation | Physical-device compatibility, runtime permission review, signed production-release verification and final regression QA |
 
 ### Product features
 
@@ -370,10 +371,10 @@ Status legend:
 | 3. DNS Security Audit | **Completed — MVP** | DNS servers, Private DNS posture, gateway/DNS evidence and change tracking | Stronger encrypted-DNS transport evidence where Android exposes it |
 | 4. Gateway Security Audit | **Completed — MVP** | Gateway identity/change detection and service exposure checks | More gateway-management protocol coverage |
 | 5. TLS/HTTPS Security Analyzer | **Completed — MVP** | HTTPS reachability, certificate subject/issuer/expiry, hostname verification, safe redirect inspection | Stronger TLS protocol/cipher evidence where Android APIs permit it |
-| 6. HTTP Security Analyzer | **Completed — MVP** | Redirect, HSTS, CSP, X-Content-Type-Options, Referrer-Policy, normalized header inspection | Expanded cookie/security-header analysis |
+| 6. HTTP Security Analyzer | **Completed — expanded MVP** | Redirect, HSTS, CSP, X-Content-Type-Options, Referrer-Policy, normalized header inspection, Secure/HttpOnly/SameSite cookie checks | Additional browser-policy/header coverage where useful |
 | 7. Wi-Fi Trust & Change Detection | **Completed — MVP** | SSID/BSSID/gateway/security-mode history and change classification with uncertainty | More trust signals and Android-version coverage |
 | 8. Remediation Center | **Completed — MVP** | Central queue, guided remediation, verification, history | More contextual platform/router guidance |
-| 9. Security Timeline | **Completed** | Persistent timeline model/store, device/service/network/finding/remediation/verification, policy, administration, import, mobile, baseline, and report events | Physical-device UI validation only |
+| 9. Security Timeline | **Completed** | Persistent timeline model/store, device/service/network/finding/remediation/verification, policy, administration, import, mobile, baseline, and report events | Physical-device UI validation |
 | 10. Advanced Reporting | **Completed** | JSON, CSV, PDF, ZIP audit package, executive/technical reports, importer, expanded evidence/remediation/policy exports | Full end-to-end physical-device/release validation |
 | 11. Configurable Security Policies | **Completed — MVP** | Persistent custom policies, validation, BLOCK_PORT/REQUIRE_HTTPS rules, audit/report representation | Complete history persistence validation; richer thresholds/profiles |
 | 12. Security Learning Mode | **Completed — MVP** | Technical explanations, evidence interpretation, remediation and verification walkthroughs | Expand lesson content and interactive exercises |
