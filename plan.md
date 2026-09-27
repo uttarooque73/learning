@@ -549,3 +549,13 @@ For every feature:
 - Profile image selection uses Android's document picker and copies the selected image into app-private storage.
 - Existing NetGuard app-lock/biometric protection remains a separate second protection layer after account authentication.
 - No remote authentication backend is introduced; this is intentionally local-first for the current app architecture.
+
+
+## Mobile Number Contacts — Implemented
+
+- Added a dedicated Mobile Numbers screen.
+- Requests Android READ_CONTACTS permission only when the user opens the feature.
+- Reads phone-number entries through ContactsContract after explicit permission.
+- Allows selecting individual numbers and stores only selected name/number entries locally.
+- Prevents duplicate saved numbers and supports removal.
+- No contact data is uploaded or synchronized to a remote service.
