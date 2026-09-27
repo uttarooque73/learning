@@ -13,6 +13,10 @@ data class AppSecurityCheck(
     val cleartextAllowed: Boolean?,
     val exportedComponents: Int,
     val requestedDangerousPermissions: List<String>,
+    val installerPackage: String? = null,
+    val versionName: String? = null,
+    val versionCode: Long? = null,
+    val targetSdk: Int? = null,
     val evidence: List<String>,
     val remediation: List<String>
 )
@@ -67,6 +71,13 @@ object InstalledAppSecurityAudit {
                 appInfo.flags and ApplicationInfo.FLAG_USES_CLEARTEXT_TRAFFIC != 0
             } else null
             val exported = exportedCount(pkg)
+            val installerPackage = runCatching {
+                if (Build.VERSION.SDK_INT >= 30) pm.getInstallSourceInfo(pkg.packageName).installingPackageName
+                else @Suppress("DEPRECATION") pm.getInstallerPackageName(pkg.packageName)
+            }.getOrNull()
+            val versionName = pkg.versionName
+            val versionCode = if (Build.VERSION.SDK_INT >= 28) pkg.longVersionCode else @Suppress("DEPRECATION") pkg.versionCode.toLong()
+            val targetSdk = appInfo.targetSdkVersion
             val requested = pkg.requestedPermissions.orEmpty()
                 .filter { it in dangerousPermissions }
                 .distinct()
@@ -77,6 +88,9 @@ object InstalledAppSecurityAudit {
                 if (cleartextAllowed == true) add("Application explicitly allows cleartext traffic.")
                 if (exported > 0) add("$exported exported application components were detected.")
                 if (requested.isNotEmpty()) add("Requested sensitive permissions: " + requested.joinToString())
+                if (installerPackage == null) add("Installer source could not be established; review as an unknown installation source.")
+                if (installerPackage != null) add("Installer package: $installerPackage")
+                if (targetSdk != null) add("Target SDK: $targetSdk")
             }
 
             AppSecurityCheck(
@@ -87,6 +101,10 @@ object InstalledAppSecurityAudit {
                 cleartextAllowed = cleartextAllowed,
                 exportedComponents = exported,
                 requestedDangerousPermissions = requested,
+                installerPackage = installerPackage,
+                versionName = versionName,
+                versionCode = versionCode,
+                targetSdk = targetSdk,
                 evidence = evidence,
                 remediation = listOf(
                     "Review whether the application still needs each sensitive permission.",
