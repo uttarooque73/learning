@@ -17,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.File
+import com.uttarooque73.netguard.security.SavedContact
 
 @Composable
 fun LoginScreen(
@@ -116,5 +119,47 @@ fun ProfileScreen(
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
         TextButton(onClick = onLogout) { Text("Log out") }
+    }
+}
+
+
+@Composable
+fun ContactNumbersScreen(
+    savedContacts: List<SavedContact>,
+    deviceContacts: List<SavedContact>,
+    error: String?,
+    onAddContact: (SavedContact) -> Unit,
+    onRemoveContact: (String) -> Unit
+) {
+    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Mobile Numbers", style = MaterialTheme.typography.headlineSmall)
+        Text("Choose numbers from your Android contacts. NetGuard stores only the selected name and number locally.")
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (deviceContacts.isEmpty()) {
+            Text("No phone contacts are available, or Contacts permission has not been granted.")
+        } else {
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(deviceContacts, key = { it.id + it.phoneNumber }) { contact ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(Modifier.weight(1f)) {
+                                Text(contact.name, style = MaterialTheme.typography.titleSmall)
+                                Text(contact.phoneNumber)
+                            }
+                            Button(onClick = { onAddContact(contact) }) { Text("Add") }
+                        }
+                    }
+                }
+            }
+        }
+        if (savedContacts.isNotEmpty()) {
+            Text("Selected numbers", style = MaterialTheme.typography.titleMedium)
+            savedContacts.forEach { contact ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(contact.name + " — " + contact.phoneNumber, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { onRemoveContact(contact.id) }) { Text("Remove") }
+                }
+            }
+        }
     }
 }
