@@ -1506,16 +1506,30 @@ private fun screenTitle(screen: Screen): String = when (screen) {
 
 @Composable
 private fun LearningScreen() {
+    var query by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf<String?>(null) }
+    val topics = SecurityLearningMode.topics.filter {
+        query.isBlank() || it.title.contains(query, true) || it.explanation.contains(query, true)
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Security Learning Mode", style = MaterialTheme.typography.headlineMedium)
-        SecurityLearningMode.topics.forEach {
+        Text("Turn your audit results into practical security knowledge.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(query, { query = it }, label = { Text("Search lessons") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Text(topics.size.toString() + " lesson(s)")
+        topics.forEach {
+            val isExpanded = expanded == it.title
             Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(it.title, style = MaterialTheme.typography.titleMedium)
                     Text(it.explanation)
-                    Text("Evidence: " + it.evidenceGuide)
-                    Text("Remediation: " + it.remediationConcept)
-                    Text("Verification: " + it.verificationGuide)
+                    LoadingTextButton(onClick = { expanded = if (isExpanded) null else it.title }) {
+                        Text(if (isExpanded) "Hide details" else "Learn how to investigate")
+                    }
+                    if (isExpanded) {
+                        Text("Evidence: " + it.evidenceGuide)
+                        Text("Remediation: " + it.remediationConcept)
+                        Text("Verification: " + it.verificationGuide)
+                    }
                 }
             }
         }
@@ -1561,40 +1575,62 @@ private fun DevicesScreen(
     findings: List<Finding>,
     onSelectFinding: (Finding?) -> Unit
 ) {
+    var query by remember { mutableStateOf("") }
+    var findingsOnly by remember { mutableStateOf(false) }
+    val filteredDevices = devices.filter { device ->
+        !findingsOnly || findings.any { it.ipAddress == device.ipAddress }
+    }.filter { device ->
+        query.isBlank() ||
+            device.ipAddress.contains(query, true) ||
+            (device.hostname?.contains(query, true) == true)
+    }
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 32.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Device Inventory", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            devices.size.toString() + " discovered • " +
+                devices.count { d -> findings.any { it.ipAddress == d.ipAddress } } + " with findings",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = { Text("Search IP or hostname") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        FilterChip(findingsOnly, { findingsOnly = !findingsOnly }, label = { Text("Devices with findings") })
         if (isDiscovering) CircularProgressIndicator()
-        if (!isDiscovering && devices.isEmpty()) Text("No reachable devices have been discovered.")
-        devices.forEach { device ->
-        val deviceServices = services.filter { it.ipAddress == device.ipAddress }
-        val deviceFindings = findings.filter { it.ipAddress == device.ipAddress }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
-                Text("Status: " + if (device.reachable) "Reachable" else "Not reachable")
-                Text("Hostname: " + (device.hostname ?: "Unavailable"))
-                LoadingButton(onClick = { onAuditDevice(device.ipAddress) }, enabled = auditingIp == null) {
-                    Text(if (auditingIp == device.ipAddress) "Auditing…" else "Audit Services")
-                }
-                if (deviceServices.isEmpty()) {
-                    Text("No catalogued services detected.")
-                } else {
-                    Text("Services", style = MaterialTheme.typography.titleSmall)
-                    deviceServices.forEach { service ->
+        if (!isDiscovering && filteredDevices.isEmpty()) {
+            Text(if (devices.isEmpty()) "No reachable devices have been discovered." else "No devices match the current filter.")
+        }
+        filteredDevices.forEach { device ->
+            val deviceServices = services.filter { it.ipAddress == device.ipAddress }
+            val deviceFindings = findings.filter { it.ipAddress == device.ipAddress }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(device.ipAddress, style = MaterialTheme.typography.titleMedium)
+                    Text("Status: " + if (device.reachable) "Reachable" else "Not reachable")
+                    Text("Hostname: " + (device.hostname ?: "Unavailable"))
+                    Text("Exposure: " + deviceServices.count { it.reachable } + " reachable service(s)")
+                    if (deviceFindings.isNotEmpty()) {
                         Text(
-                            service.port.toString() + "/" + service.protocol + " — " +
-                                service.serviceName + if (service.reachable) " — reachable" else " — unavailable"
+                            deviceFindings.size.toString() + " finding(s)",
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
-                }
-                if (deviceFindings.isNotEmpty()) {
-                    Text("Findings", style = MaterialTheme.typography.titleSmall)
+                    LoadingButton(onClick = { onAuditDevice(device.ipAddress) }, enabled = auditingIp == null) {
+                        Text(if (auditingIp == device.ipAddress) "Auditing…" else "Audit Services")
+                    }
+                    if (deviceServices.isNotEmpty()) {
+                        Text("Services", style = MaterialTheme.typography.titleSmall)
+                        deviceServices.forEach { service ->
+                            Text(service.port.toString() + "/" + service.protocol + " — " + service.serviceName +
+                                if (service.reachable) " — reachable" else " — unavailable")
+                        }
+                    }
                     deviceFindings.forEach { finding ->
                         LoadingTextButton(onClick = { onSelectFinding(finding) }) {
                             Text(finding.severity.name + ": " + finding.title)
@@ -1603,10 +1639,8 @@ private fun DevicesScreen(
                 }
             }
         }
-        }
     }
 }
-
 @Composable
 private fun RiskDashboard(findings: List<Finding>, onSelectFinding: (Finding?) -> Unit) {
     val score = RiskCalculator.score(findings)
