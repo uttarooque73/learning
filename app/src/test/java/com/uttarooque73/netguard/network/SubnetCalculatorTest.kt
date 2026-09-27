@@ -35,4 +35,14 @@ class SubnetCalculatorTest {
         assertEquals(null, SubnetCalculator.networkCidr("10.0.0.999", 24))
         assertEquals(null, SubnetCalculator.networkCidr("10.0.0.5", 31))
     }
+    @Test fun deviceObservationBecomesStaleAfterFreshnessWindow() {
+        val device = DiscoveredDevice("192.168.1.10", reachable = true, discoveredAtEpochMs = 1_000L)
+        assertEquals(DeviceObservationStatus.STALE, device.observationStatus(16 * 60 * 1000L))
+    }
+
+    @Test fun deviceObservationPreservesReachabilityBeforeStaleWindow() {
+        val device = DiscoveredDevice("192.168.1.10", reachable = true, discoveredAtEpochMs = 1_000L)
+        assertEquals(DeviceObservationStatus.REACHABLE, device.observationStatus(2_000L))
+    }
+
 }
