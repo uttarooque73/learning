@@ -406,6 +406,7 @@ class MainActivity : FragmentActivity() {
             mobileSecurity = runCatching { MobileSecurityAudit.inspect(this@MainActivity) }
                 .getOrNull()
             mobileAuditRunning = false
+            recordTimeline("mobile", "Mobile security audit refreshed", "Android device security posture refreshed")
         }
     }
 
@@ -427,6 +428,7 @@ class MainActivity : FragmentActivity() {
             "pdf" -> AdvancedReportExporter.pdf(this, snapshot)
             else -> AdvancedReportExporter.packageAudit(this, snapshot)
         }
+        recordTimeline("report", "Audit report exported", "Exported $format report for audit ${snapshot.id}")
         val uri = FileProvider.getUriForFile(this, "com.uttarooque73.netguard.fileprovider", file)
         startActivity(Intent.createChooser(
             Intent(Intent.ACTION_SEND).apply {
@@ -556,6 +558,7 @@ class MainActivity : FragmentActivity() {
         profiles = (profiles.filterNot { it.ssid == profile.ssid } + profile)
         adminStore.saveProfiles(profiles)
         recordAdminEvent(AdminEventType.PROFILE_CREATED, profile.id, "Created profile ${profile.name}")
+        recordTimeline("administration", "Network profile created", profile.name)
     }
 
     private fun updateAsset(ipAddress: String) {
@@ -564,6 +567,7 @@ class MainActivity : FragmentActivity() {
         assets = assets.filterNot { it.ipAddress == ipAddress } + updated
         adminStore.saveAssets(assets)
         recordAdminEvent(AdminEventType.ASSET_UPDATED, ipAddress, "Updated asset metadata")
+        recordTimeline("administration", "Asset metadata updated", ipAddress)
     }
 
     private fun recordAdminEvent(type: AdminEventType, subject: String, detail: String) {
@@ -573,6 +577,13 @@ class MainActivity : FragmentActivity() {
     private fun evaluateBaseline() {
         val baseline = baselineStore.load() ?: DefaultBaselines.secureHomeNetwork().also { baselineStore.save(it) }
         baselineResults = BaselineEvaluator.evaluate(baseline, services)
+        val failed = baselineResults.count { it.status.name == "FAIL" }
+        val review = baselineResults.count { it.status.name == "REVIEW" }
+        recordTimeline(
+            "baseline",
+            "Security baseline evaluated",
+            "${baselineResults.size} checks: $failed failed, $review review"
+        )
     }
     private fun checkForChanges() {
         if (monitoring) return
