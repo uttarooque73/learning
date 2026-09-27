@@ -1003,10 +1003,12 @@ private fun LearningScreen() {
 }
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
+    // Dashboard already owns the vertical scroll container. Keeping this
+    // screen non-scrollable avoids nested vertical scrolling/infinite-height
+    // measurement crashes when the Network menu is opened.
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .fillMaxWidth()
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
