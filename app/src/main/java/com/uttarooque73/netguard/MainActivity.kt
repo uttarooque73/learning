@@ -887,7 +887,13 @@ private fun Dashboard(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .then(
+                if (selectedScreen == Screen.Dashboard) {
+                    Modifier.verticalScroll(rememberScrollState())
+                } else {
+                    Modifier
+                }
+            )
             .padding(20.dp)
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -946,15 +952,15 @@ private fun Dashboard(
             Screen.Intelligence -> IntelligenceScreen(devices, services, topology, dnsSecurity, vulnerabilityCandidates, riskTrend)
             Screen.Findings -> FindingsFeatureScreen(findings) { onSelectFinding(it) }
             Screen.Remediation -> RemediationFeatureScreen(findings, remediationRecords, onStartRemediation, verificationResults, onVerifyFinding, verifyingFindingId)
-            Screen.Monitoring -> MonitoringSection(monitoring, monitorEvents, onCheckChanges)
-            Screen.Baseline -> BaselineSection(baselineResults, onEvaluateBaseline)
+            Screen.Monitoring -> FeatureListScreen("Monitoring", "Local inventory change monitoring.") { MonitoringSection(monitoring, monitorEvents, onCheckChanges) }
+            Screen.Baseline -> FeatureListScreen("Baseline", "Evidence-backed local security baseline evaluation.") { BaselineSection(baselineResults, onEvaluateBaseline) }
             Screen.Mobile -> MobileSecuritySection(mobileSecurity, mobileAuditRunning, onRefreshMobileSecurity)
             Screen.Wifi -> WifiFeatureScreen(wifiTrustResult)
             Screen.Web -> WebFeatureScreen(tlsResult, httpResult)
             Screen.Policies -> PolicyFeatureScreen(policyResults, selectedPolicyProfile, onSelectPolicyProfile)
             Screen.Timeline -> TimelineFeatureScreen(timelineEvents)
-            Screen.Reports -> ReportSection(auditHistory, latestReport, onCreateReport, onImportAuditPackage)
-            Screen.Administration -> AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset)
+            Screen.Reports -> FeatureListScreen("Reports", "Saved audit history and audit package import/export.") { ReportSection(auditHistory, latestReport, onCreateReport, onImportAuditPackage) }
+            Screen.Administration -> FeatureListScreen("Administration", "Network profiles, asset metadata and administrative events.") { AdministrationSection(profiles, assets, adminEvents, onCreateProfile, onUpdateAsset) }
             Screen.Learning -> LearningScreen()
             Screen.Advanced -> AdvancedSecuritySection(appSecurityChecks, dnsGatewayResult, wifiTrustResult, tlsResult, httpResult, policyResults, selectedPolicyProfile, onSelectPolicyProfile, onRunAdvancedAudit, onExportReport, timelineEvents, customPolicyEvaluations)
         }
@@ -1003,12 +1009,10 @@ private fun LearningScreen() {
 }
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
-    // Dashboard already owns the vertical scroll container. Keeping this
-    // screen non-scrollable avoids nested vertical scrolling/infinite-height
-    // measurement crashes when the Network menu is opened.
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
