@@ -22,7 +22,7 @@ object DnsGatewayAudit {
         val lp = network?.let { cm.getLinkProperties(it) }
         val dns = lp?.dnsServers.orEmpty().mapNotNull(InetAddress::getHostAddress)
         val gateway = lp?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress
-        val resolved = gateway?.let { runCatching { InetAddress.getByName(it) }.isSuccess } ?: false
+        val resolved = gateway?.let { runCatching { InetAddress.getByName(it).isReachable(750) }.getOrDefault(false) } ?: false
         val changed = previousGateway != null && gateway != null && previousGateway != gateway
         val privateDnsActive = if (android.os.Build.VERSION.SDK_INT >= 28) lp?.isPrivateDnsActive else null
         val privateDnsServerName = if (android.os.Build.VERSION.SDK_INT >= 28) lp?.privateDnsServerName else null
@@ -33,6 +33,8 @@ object DnsGatewayAudit {
             if (privateDnsActive == true) add("Android Private DNS is active.")
             if (privateDnsServerName != null) add("Private DNS server name: $privateDnsServerName")
             if (privateDnsActive == false) add("Android Private DNS is not active.")
+            if (dns.isEmpty()) add("No DNS servers were reported by the active network.")
+            if (!resolved && gateway != null) add("The gateway did not respond to the bounded reachability check.")
         }
         return DnsGatewayAuditResult(
             dnsServers = dns,
