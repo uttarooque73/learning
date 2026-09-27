@@ -20,6 +20,8 @@ data class TrustedSecurityBaselineSnapshot(
     val ssid: String?,
     val bssid: String?,
     val gateway: String?,
+    val dnsKeys: List<String> = emptyList(),
+    val wifiSecurity: String? = null,
     val deviceKeys: List<String>,
     val serviceKeys: List<String>,
     val appKeys: List<String>,
@@ -29,7 +31,7 @@ data class TrustedSecurityBaselineSnapshot(
 object SecurityDriftEngine {
     fun snapshot(network: NetworkInfo?, devices: List<DiscoveredDevice>, services: List<DiscoveredService>, apps: List<AppSecurityCheck>, now: Long): TrustedSecurityBaselineSnapshot =
         TrustedSecurityBaselineSnapshot(
-            now, network?.ssid, network?.bssid, network?.gatewayAddress,
+            now, network?.ssid, network?.bssid, network?.gatewayAddress, network?.dnsServers.sorted(), network?.wifiSecurity,
             devices.map { it.ipAddress }.sorted(),
             services.map { it.ipAddress + "|" + it.protocol + "|" + it.port }.sorted(),
             apps.map { it.packageName + "|" + (it.versionCode ?: 0L) }.sorted(),
@@ -39,6 +41,8 @@ object SecurityDriftEngine {
     fun compare(before: TrustedSecurityBaselineSnapshot, after: TrustedSecurityBaselineSnapshot): List<SecurityDrift> {
         val out = mutableListOf<SecurityDrift>()
         if (before.ssid != after.ssid || before.bssid != after.bssid) out += SecurityDrift("network-identity", "NETWORK", "Wi-Fi identity changed", before.ssid + " / " + before.bssid, after.ssid + " / " + after.bssid, "REVIEW", "Confirm the current Wi-Fi network and BSSID.")
+        if (before.dnsKeys != after.dnsKeys) out += SecurityDrift("dns-change", "NETWORK", "DNS configuration changed", before.dnsKeys.joinToString().ifBlank { "Unavailable" }, after.dnsKeys.joinToString().ifBlank { "Unavailable" }, "REVIEW", "Verify the DNS servers and Private DNS configuration.")
+        if (before.wifiSecurity != after.wifiSecurity) out += SecurityDrift("wifi-security-change", "NETWORK", "Wi-Fi security mode changed", before.wifiSecurity ?: "Unavailable", after.wifiSecurity ?: "Unavailable", "HIGH", "Verify the access point security configuration.")
         if (before.gateway != after.gateway) out += SecurityDrift("gateway", "NETWORK", "Default gateway changed", before.gateway ?: "Unavailable", after.gateway ?: "Unavailable", "HIGH", "Verify the router or gateway identity.")
         (after.deviceKeys - before.deviceKeys).forEach { out += SecurityDrift("device-added-" + it, "DEVICE", "New network device observed", "Not present in trusted baseline", it, "REVIEW", "Identify the device and verify that it is authorized.") }
         (before.deviceKeys - after.deviceKeys).forEach { out += SecurityDrift("device-removed-" + it, "DEVICE", "Previously observed device disappeared", it, "Not currently observed", "INFO", "Re-run discovery if the device should still be online.") }
