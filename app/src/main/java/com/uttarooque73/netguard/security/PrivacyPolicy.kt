@@ -14,6 +14,12 @@ object PrivacyPolicy {
         "verification results",
         "audit history",
         "monitoring events",
-        "administrative metadata"
+        "baseline configuration and evaluation",
+        "network profiles",
+        "asset metadata",
+        "administrative metadata",
+        "custom security policies and evaluations",
+        "security timeline events",
+        "audit report snapshots"
     )
 }
