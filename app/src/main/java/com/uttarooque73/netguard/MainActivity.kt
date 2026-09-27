@@ -1561,7 +1561,7 @@ private fun Dashboard(
                             Text("Run a Full Security Check to start your score history.", style = MaterialTheme.typography.bodySmall)
                         } else {
                             latest.forEach { point ->
-                                Text(java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(point.createdAtEpochMs)) + " — " + point.score + "/100 • " + point.findingCount + " findings", style = MaterialTheme.typography.bodySmall)
+                                Text(java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(point.timestamp)) + " — " + point.score + "/100 • " + point.findings + " findings", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                         Text("Last check: " + (auditHistory.lastOrNull()?.createdAtEpochMs?.let { java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: "Not checked"))
