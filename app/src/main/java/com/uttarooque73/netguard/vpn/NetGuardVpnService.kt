@@ -7,15 +7,13 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import com.uttarooque73.netguard.features.adguard.AdBlockCatalog
 import com.uttarooque73.netguard.features.adguard.AdBlockStore
+import com.uttarooque73.netguard.features.adguard.AdBlockFilter
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.concurrent.thread
 
 class NetGuardVpnService : VpnService() {
@@ -46,6 +44,7 @@ class NetGuardVpnService : VpnService() {
             .setSession("NetGuard DNS Protection")
             .setMtu(1500)
             .addAddress(VPN_ADDRESS, 32)
+            // Capture DNS traffic directed at the local synthetic resolver.
             .addRoute(DNS_ADDRESS, 32)
             .addDnsServer(DNS_ADDRESS)
             .establish()
@@ -98,7 +97,7 @@ class NetGuardVpnService : VpnService() {
         val dns = packet.copyOfRange(udpOffset + 8, udpOffset + udpLength)
         val host = readDnsQuestionName(dns) ?: return
 
-        val blocked = store.enabled() && store.rules().any { it.enabled && AdBlockCatalog.matches(host, it) }
+        val blocked = store.enabled() && AdBlockFilter.isBlocked(host, store.rules())
         val responseDns = if (blocked) {
             store.recordBlocked(host)
             buildNxDomainResponse(dns)
