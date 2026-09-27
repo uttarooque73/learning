@@ -637,6 +637,19 @@ class MainActivity : FragmentActivity() {
                 it.findingId == result.findingId && it.ipAddress == result.ipAddress
             } + result
             verificationStore.save(verificationResults)
+
+            if (result.status == com.uttarooque73.netguard.verification.VerificationStatus.FIXED) {
+                val existing = remediationRecords.firstOrNull {
+                    it.findingId == finding.id && it.ipAddress == finding.ipAddress
+                }
+                if (existing != null) {
+                    remediationRecords = remediationRecords.filterNot {
+                        it.findingId == finding.id && it.ipAddress == finding.ipAddress
+                    } + existing.copy(status = RemediationStatus.COMPLETED)
+                    remediationStore.save(remediationRecords)
+                }
+            }
+
             recordTimeline("verification", "Finding verified", "${finding.id} on ${finding.ipAddress}: ${result.status.name}")
             verifyingFindingId = null
         }
