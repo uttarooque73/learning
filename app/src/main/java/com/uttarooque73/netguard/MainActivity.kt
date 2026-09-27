@@ -1537,34 +1537,34 @@ private fun LearningScreen() {
 }
 @Composable
 private fun NetworkScreen(networkInfo: NetworkInfo?) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Network Inventory", style = MaterialTheme.typography.headlineSmall)
         if (networkInfo == null) {
-            Text("No network inventory available. Inspect the current network first.")
+            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("No network inventory available."); Text("Inspect the current network to establish the evidence baseline.") } }
         } else {
-            Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Connection", style = MaterialTheme.typography.titleMedium)
-            Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
-            Text("BSSID: " + (networkInfo.bssid ?: "Unavailable"))
-            Text("Interface: " + (networkInfo.interfaceName ?: "Unavailable"))
-            Text("Local address: " + (networkInfo.localAddress ?: "Unavailable"))
-            Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
-            Text("Network CIDR: " + (networkInfo.subnet ?: "Unavailable"))
-            Text("DNS: " + networkInfo.dnsServers.ifEmpty { listOf("Unavailable") }.joinToString())
-            Text("Wi-Fi security: " + (networkInfo.wifiSecurity ?: "Not determined"))
+            val security = networkInfo.wifiSecurity ?: "Not determined"
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Connection identity", style = MaterialTheme.typography.titleMedium)
+                    Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
+                    Text("BSSID: " + (networkInfo.bssid ?: "Unavailable"))
+                    Text("Interface: " + (networkInfo.interfaceName ?: "Unavailable"))
+                    Text("Local address: " + (networkInfo.localAddress ?: "Unavailable"))
+                    Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
+                    Text("Network CIDR: " + (networkInfo.subnet ?: "Unavailable"))
+                }
             }
-        }
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Security context", style = MaterialTheme.typography.titleMedium)
+                    Text("Wi-Fi security: " + security)
+                    Text("DNS: " + networkInfo.dnsServers.ifEmpty { listOf("Unavailable") }.joinToString())
+                    Text("Use Wi-Fi Trust and DNS & Gateway audits for change detection and deeper checks.")
+                }
+            }
         }
     }
 }
-
 @Composable
 private fun DevicesScreen(
     devices: List<DiscoveredDevice>,
@@ -1723,28 +1723,27 @@ private fun ReportSection(
     onCreateReport: () -> Unit,
     onImportAuditPackage: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    var query by remember { mutableStateOf("") }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Reports & audit history", style = MaterialTheme.typography.titleMedium)
-            LoadingButton(onClick = onCreateReport) { Text("Create audit report") }
-            LoadingButton(onClick = onImportAuditPackage) { Text("Import audit package") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LoadingButton(onClick = onCreateReport) { Text("Create audit report") }
+                LoadingButton(onClick = onImportAuditPackage) { Text("Import package") }
+            }
             Text("Saved audits: " + history.size)
-            history.takeLast(5).reversed().forEach { entry ->
-                val created = java.text.SimpleDateFormat(
-                    "yyyy-MM-dd HH:mm:ss",
-                    java.util.Locale.US
-                ).format(java.util.Date(entry.createdAtEpochMs))
-                Text(
-                    created + " — devices " + entry.deviceCount +
-                        ", services " + entry.serviceCount +
-                        ", findings " + entry.findingCount
-                )
-                Text("Audit ID: " + entry.id, style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(query, { query = it }, label = { Text("Search audit ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            history.takeLast(10).reversed().filter { query.isBlank() || it.id.contains(query, true) }.forEach { entry ->
+                val created = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date(entry.createdAtEpochMs))
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(created, style = MaterialTheme.typography.titleSmall)
+                        Text("Devices " + entry.deviceCount + " • Services " + entry.serviceCount + " • Findings " + entry.findingCount)
+                        Text("Audit ID: " + entry.id, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
-            latestReport?.let { report ->
-                Text("Latest report", style = MaterialTheme.typography.titleSmall)
-                Text(report)
-            }
+            latestReport?.let { Text("Latest report", style = MaterialTheme.typography.titleSmall); Text(it) }
         }
     }
 }
@@ -1754,19 +1753,19 @@ private fun MonitoringSection(
     events: List<MonitorEvent>,
     onCheckChanges: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    var query by remember { mutableStateOf("") }
+    val filtered = events.filter { query.isBlank() || it.ipAddress.contains(query, true) || it.detail.contains(query, true) || it.type.name.contains(query, true) }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Monitoring", style = MaterialTheme.typography.titleMedium)
-            Text("Compares the current authorized inventory and network context with the saved monitoring baseline. It does not perform a new network scan.")
-            LoadingButton(onClick = onCheckChanges, enabled = !monitoring) {
-                Text(if (monitoring) "Checking..." else "Check for changes")
-            }
+            Text("Change detection compares the saved authorized inventory baseline with the current observation.")
+            LoadingButton(onClick = onCheckChanges, enabled = !monitoring) { Text(if (monitoring) "Checking..." else "Check for changes") }
             Text("Changes detected: " + events.size)
-            if (events.isEmpty()) {
-                Text("No changes detected since the saved baseline.")
-            } else {
-                events.takeLast(5).reversed().forEach { event ->
-                    Text(event.type.name + " — " + event.ipAddress + " — " + event.detail)
+            OutlinedTextField(query, { query = it }, label = { Text("Search changes") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            if (filtered.isEmpty()) Text("No changes match the current filter.")
+            filtered.takeLast(20).reversed().forEach { event ->
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(10.dp)) { Text(event.type.name + " — " + event.ipAddress, style = MaterialTheme.typography.titleSmall); Text(event.detail) }
                 }
             }
         }
@@ -1777,27 +1776,16 @@ private fun BaselineSection(
     results: List<BaselineResult>,
     onEvaluate: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val failed = results.count { it.status.name == "FAIL" }
+    val review = results.count { it.status.name == "REVIEW" }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Security baseline", style = MaterialTheme.typography.titleMedium)
-            Text("Selected local baseline: Secure Home Network")
-            Text("Results are based on currently audited reachable services.")
+            Text("Secure Home Network baseline • " + results.count { it.status.name == "PASS" } + " pass • " + failed + " fail • " + review + " review")
             LoadingButton(onClick = onEvaluate) { Text("Evaluate baseline") }
-
-            if (results.isNotEmpty()) {
-                val passCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.PASS }
-                val reviewCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.REVIEW }
-                val failCount = results.count { it.status == com.uttarooque73.netguard.compliance.BaselineStatus.FAIL }
-                Text("Summary: $passCount PASS • $reviewCount REVIEW • $failCount FAIL")
-            } else {
-                Text("No baseline evaluation has been run yet.")
-            }
-
             results.forEach { result ->
-                Text(result.status.name + " — " + result.title)
-                Text(result.evidence)
-                if (result.status == com.uttarooque73.netguard.compliance.BaselineStatus.REVIEW) {
-                    Text("REVIEW means the available evidence is insufficient to establish compliance; it is not a confirmed security failure.")
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (result.status.name == "FAIL") MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(10.dp)) { Text(result.status.name + " — " + result.checkId, style = MaterialTheme.typography.titleSmall); Text(result.evidence) }
                 }
             }
         }
