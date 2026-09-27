@@ -393,7 +393,7 @@ Status legend:
 1. **Audit history completeness** — verify and finish persistence/restoration of custom policy evaluations and all audit metadata.
 2. **Imported-audit UX** — add import confirmation, clearer error states, and robust MIME/provider handling.
 3. **Timeline completeness** — add policy, administration, and audit-import events consistently.
-4. **Monitoring hardening** — improve permission failure UX, scheduling edge cases, and network-change coverage.
+4. **Monitoring hardening** — completed: network-context changes reset the baseline safely; device/service metadata changes are detected and persisted.
 5. **Security intelligence expansion** — richer service fingerprints and confidence/evidence handling without claiming unsupported device identities.
 6. **Vulnerability intelligence expansion** — add product/version evidence before treating candidate CVEs as applicable.
 7. **TLS/HTTP expansion** — improve protocol/cipher and cookie/security-header evidence where platform APIs permit.
