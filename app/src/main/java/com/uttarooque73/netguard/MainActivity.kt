@@ -1269,49 +1269,172 @@ private fun Dashboard(
         when (selectedScreen) {
             Screen.Profile, Screen.Contacts, Screen.CallProtection -> Unit
             Screen.Dashboard -> {
-                Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
-                Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
-
-                discoveryError?.let { error ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Text("Discovery error: " + error, modifier = Modifier.padding(16.dp))
-                    }
+                val critical = findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.CRITICAL }
+                val high = findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.HIGH }
+                val medium = findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.MEDIUM }
+                val low = findings.count { it.severity == com.uttarooque73.netguard.audit.FindingSeverity.LOW }
+                val unresolved = findings.filter { finding ->
+                    remediationRecords.lastOrNull { it.findingId == finding.id && it.ipAddress == finding.ipAddress }?.status != RemediationStatus.COMPLETED
                 }
+                val changedRecently = monitorEvents.takeLast(5).reversed()
+                val postureLabel = when {
+                    networkInfo == null -> "NOT ASSESSED"
+                    critical > 0 -> "CRITICAL ATTENTION"
+                    high > 0 -> "HIGH PRIORITY"
+                    findings.isNotEmpty() -> "ATTENTION NEEDED"
+                    devices.isEmpty() -> "DISCOVERY NEEDED"
+                    else -> "NO FINDINGS DETECTED"
+                }
+                val postureContainer = when {
+                    critical > 0 -> MaterialTheme.colorScheme.errorContainer
+                    high > 0 -> MaterialTheme.colorScheme.secondaryContainer
+                    findings.isNotEmpty() -> MaterialTheme.colorScheme.tertiaryContainer
+                    else -> MaterialTheme.colorScheme.primaryContainer
+                }
+                var selectedAuditProfile by remember { mutableStateOf(AuditProfile.STANDARD) }
 
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Current network", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
-                        if (networkInfo == null) {
-                            Text("Not inspected yet")
-                            Text("Start an authorized network inspection to collect local network details.")
-                        } else {
-                            Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
-                            Text("Local IP: " + (networkInfo.localAddress ?: "Unavailable"))
-                            Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
-                            Text("Network CIDR: " + (networkInfo.subnet ?: "Unavailable"))
+                Text("Security Overview", style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    "Understand your current exposure, what changed, and what to do next.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = postureContainer)
+                ) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Security posture", style = MaterialTheme.typography.titleLarge)
+                        Text(postureLabel, style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            if (findings.isEmpty())
+                                if (networkInfo == null) "No security assessment has been performed yet." else "No findings have been recorded from the current audit."
+                            else "$critical critical • $high high • $medium medium • $low low"
+                        )
+                        if (findings.isEmpty()) {
+                            Text(
+                                "A clean finding list is not the same as a completed assessment. Run an audit to collect evidence.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    LoadingButton(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
-                        Text(if (networkInfo == null) "Inspect Network" else "Refresh")
-                    }
-                    LoadingButton(
-                        onClick = onDiscoverDevices,
-                        enabled = networkInfo != null && !isDiscovering,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (isDiscovering) "Discovering…" else "Find Devices")
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Run security audit", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Choose how much discovery and service auditing to perform.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AuditProfile.values().forEach { profile ->
+                                FilterChip(
+                                    selected = selectedAuditProfile == profile,
+                                    onClick = { selectedAuditProfile = profile },
+                                    label = { Text(profile.name) }
+                                )
+                            }
+                        }
+                        LoadingButton(
+                            onClick = { onRunCommandCenterProfile(selectedAuditProfile) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Run " + selectedAuditProfile.name.lowercase().replaceFirstChar { it.uppercase() } + " Security Audit")
+                        }
                     }
                 }
 
-                RiskDashboard(findings, onSelectFinding)
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Security workflow", style = MaterialTheme.typography.titleMedium)
-                        Text("Open the navigation drawer to access each security capability.")
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Security snapshot", style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OverviewMetric("Devices", devices.size.toString(), Modifier.weight(1f))
+                            OverviewMetric("Services", services.size.toString(), Modifier.weight(1f))
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OverviewMetric("Findings", findings.size.toString(), Modifier.weight(1f))
+                            OverviewMetric("Changes", monitorEvents.size.toString(), Modifier.weight(1f))
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LoadingTextButton(onClick = { onSelectScreen(Screen.Devices) }) { Text("View devices") }
+                            LoadingTextButton(onClick = { onSelectScreen(Screen.Findings) }) { Text("View findings") }
+                        }
+                    }
+                }
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Network", style = MaterialTheme.typography.titleMedium)
+                        if (networkInfo == null) {
+                            Text("Network information has not been collected yet.")
+                        } else {
+                            Text("SSID: " + (networkInfo.ssid ?: "Unavailable"))
+                            Text("Address: " + (networkInfo.localAddress ?: "Unavailable"))
+                            Text("Gateway: " + (networkInfo.gatewayAddress ?: "Unavailable"))
+                            Text("CIDR: " + (networkInfo.subnet ?: "Unavailable"))
+                            Text("Wi-Fi security: " + (networkInfo.wifiSecurity ?: "Not determined"), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LoadingButton(onClick = onStartAudit, modifier = Modifier.weight(1f)) {
+                                Text(if (networkInfo == null) "Inspect network" else "Refresh network")
+                            }
+                            LoadingTextButton(onClick = { onSelectScreen(Screen.Network) }, modifier = Modifier.weight(1f)) {
+                                Text("Details")
+                            }
+                        }
+                    }
+                }
+
+                if (unresolved.isNotEmpty()) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Security priorities", style = MaterialTheme.typography.titleMedium)
+                            unresolved.take(3).forEach { finding ->
+                                LoadingTextButton(onClick = { onSelectFinding(finding) }) {
+                                    Text(finding.severity.name + ": " + finding.title)
+                                }
+                            }
+                            LoadingTextButton(onClick = { onSelectScreen(Screen.Findings) }) {
+                                Text("Review all " + unresolved.size + " findings")
+                            }
+                        }
+                    }
+                }
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("What changed", style = MaterialTheme.typography.titleMedium)
+                        if (changedRecently.isEmpty()) {
+                            Text("No monitoring changes recorded yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            changedRecently.forEach { event ->
+                                Text("• " + event.toString(), style = MaterialTheme.typography.bodySmall)
+                            }
+                            LoadingTextButton(onClick = { onSelectScreen(Screen.Monitoring) }) {
+                                Text("Open monitoring")
+                            }
+                        }
+                    }
+                }
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Next actions", style = MaterialTheme.typography.titleMedium)
+                        LoadingTextButton(onClick = { onSelectScreen(Screen.CommandCenter) }) {
+                            Text("Open Security Command Center")
+                        }
+                        LoadingTextButton(onClick = { onSelectScreen(Screen.Intelligence) }) {
+                            Text("Explore network intelligence")
+                        }
+                        LoadingTextButton(onClick = { onSelectScreen(Screen.Reports) }) {
+                            Text("Create or review reports")
+                        }
                     }
                 }
             }
