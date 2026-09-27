@@ -2096,7 +2096,11 @@ private fun MonitoringSection(
 @Composable
 private fun BaselineSection(
     results: List<BaselineResult>,
-    onEvaluate: () -> Unit
+    onEvaluate: () -> Unit,
+    trustedBaseline: TrustedSecurityBaselineSnapshot?,
+    drifts: List<SecurityDrift>,
+    onCapture: () -> Unit,
+    onClear: () -> Unit
 ) {
     val failed = results.count { it.status.name == "FAIL" }
     val review = results.count { it.status.name == "REVIEW" }
@@ -2104,7 +2108,26 @@ private fun BaselineSection(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Security baseline", style = MaterialTheme.typography.titleMedium)
             Text("Secure Home Network baseline • " + results.count { it.status.name == "PASS" } + " pass • " + failed + " fail • " + review + " review")
-            LoadingButton(onClick = onEvaluate) { Text("Evaluate baseline") }
+            LoadingButton(onClick = onEvaluate) { Text("Evaluate policy baseline") }
+            Text(if (trustedBaseline == null) "No trusted device baseline captured." else "Trusted baseline captured " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(trustedBaseline.capturedAtEpochMs)))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LoadingButton(onClick = onCapture) { Text(if (trustedBaseline == null) "Capture trusted baseline" else "Update trusted baseline") }
+                if (trustedBaseline != null) LoadingTextButton(onClick = onClear) { Text("Clear") }
+            }
+            if (trustedBaseline != null) {
+                Text("Security drift: " + drifts.size + " changes")
+                if (drifts.isEmpty()) Text("No drift detected since the trusted baseline was captured.")
+                drifts.take(20).forEach { drift ->
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (drift.severity == "HIGH") MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(drift.severity + " — " + drift.title, style = MaterialTheme.typography.titleSmall)
+                            Text("Before: " + drift.before)
+                            Text("After: " + drift.after)
+                            Text("Action: " + drift.recommendedAction)
+                        }
+                    }
+                }
+            }
             results.forEach { result ->
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (result.status.name == "FAIL") MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(Modifier.padding(10.dp)) { Text(result.status.name + " — " + result.checkId, style = MaterialTheme.typography.titleSmall); Text(result.evidence) }
