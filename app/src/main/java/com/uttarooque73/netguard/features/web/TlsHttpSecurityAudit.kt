@@ -29,7 +29,8 @@ data class HttpSecurityResult(
     val redirectsToHttps: Boolean?,
     val headers: Map<String, String>,
     val evidence: List<String>,
-    val remediation: List<String>
+    val remediation: List<String>,
+    val findings: List<WebSecurityFinding> = emptyList()
 )
 
 object TlsHttpSecurityAudit {
@@ -144,7 +145,8 @@ object TlsHttpSecurityAudit {
                     "Add an appropriate Content-Security-Policy.",
                     "Set X-Content-Type-Options: nosniff.",
                     "Set an appropriate Referrer-Policy."
-                )
+                ),
+                findings = WebSecurityPolicy.evaluate(url, headers, httpsRedirect)
             )
         } finally {
             connection.disconnect()
