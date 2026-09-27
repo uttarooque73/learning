@@ -683,7 +683,7 @@ class MainActivity : FragmentActivity() {
             } finally {
                 auditingIp = null
             }
-        }        }
+        }
     }
 
     private fun discoverDevices() {
