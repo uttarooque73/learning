@@ -32,16 +32,20 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
     var loading by remember{mutableStateOf(false)}
     val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri:Uri?->
         if(uri!=null) runCatching{
-            val path=uri.toString()
+            val apkFile=java.io.File(context.cacheDir,"netguard-review.apk")
+            context.contentResolver.openInputStream(uri)?.use { input -> apkFile.outputStream().use { output -> input.copyTo(output) } }
+            val path=apkFile.absolutePath
+            val flags=android.content.pm.PackageManager.GET_PERMISSIONS or android.content.pm.PackageManager.GET_ACTIVITIES or android.content.pm.PackageManager.GET_SERVICES or android.content.pm.PackageManager.GET_RECEIVERS or android.content.pm.PackageManager.GET_PROVIDERS
             val info=if(Build.VERSION.SDK_INT>=33){
-                context.packageManager.getPackageArchiveInfo(path,android.content.pm.PackageManager.PackageInfoFlags.of((android.content.pm.PackageManager.GET_PERMISSIONS or android.content.pm.PackageManager.GET_ACTIVITIES or android.content.pm.PackageManager.GET_SERVICES or android.content.pm.PackageManager.GET_RECEIVERS or android.content.pm.PackageManager.GET_PROVIDERS).toLong()))
+                context.packageManager.getPackageArchiveInfo(path,android.content.pm.PackageManager.PackageInfoFlags.of(flags.toLong()))
             }else{
-                @Suppress("DEPRECATION") context.packageManager.getPackageArchiveInfo(path,android.content.pm.PackageManager.GET_PERMISSIONS or android.content.pm.PackageManager.GET_ACTIVITIES or android.content.pm.PackageManager.GET_SERVICES or android.content.pm.PackageManager.GET_RECEIVERS or android.content.pm.PackageManager.GET_PROVIDERS)
+                @Suppress("DEPRECATION") context.packageManager.getPackageArchiveInfo(path,flags)
             }
             if(info!=null){
                 val label=info.applicationInfo?.loadLabel(context.packageManager)?.toString()?:info.packageName
                 apkReview=SecurityAutopilotEngine.reviewApk(info,label)
             }
+            apkFile.delete()
         }
     }
 
