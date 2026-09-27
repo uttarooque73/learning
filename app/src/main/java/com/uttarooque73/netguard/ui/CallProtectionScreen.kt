@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -62,16 +64,16 @@ fun CallProtectionScreen(
     }
 
     LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+        Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         item {
             Column {
-                Text("Call Protection", style = MaterialTheme.typography.headlineSmall)
+                Text("Call Protection", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Block unwanted numbers, review recent calls, and control Android call screening.",
+                    "Protect your phone from unwanted calls while keeping control of your local blocklist.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -181,7 +183,7 @@ fun CallProtectionScreen(
 
         if (blockedNumbers.isNotEmpty()) {
             items(blockedNumbers.toList().sorted()) { number ->
-                Card(Modifier.fillMaxWidth()) {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -210,7 +212,10 @@ fun CallProtectionScreen(
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CallFilterChip("All", filter == CallFilter.ALL) { filter = CallFilter.ALL }
                 CallFilterChip("Blocked", filter == CallFilter.BLOCKED) { filter = CallFilter.BLOCKED }
                 CallFilterChip("Allowed", filter == CallFilter.ALLOWED) { filter = CallFilter.ALLOWED }
@@ -245,9 +250,9 @@ fun CallProtectionScreen(
 
 @Composable
 private fun ProtectionStat(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier) {
+    Card(modifier, shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(value, style = MaterialTheme.typography.titleLarge)
+            Text(value, style = MaterialTheme.typography.headlineSmall)
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
