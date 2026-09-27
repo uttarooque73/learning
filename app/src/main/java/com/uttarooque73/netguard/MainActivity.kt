@@ -2067,6 +2067,8 @@ private fun AdvancedSecuritySection(
                 score
             }
 
+        var expandedAppPackage by remember { mutableStateOf<String?>(null) }
+
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Installed applications", style = MaterialTheme.typography.titleMedium)
@@ -2107,15 +2109,30 @@ private fun AdvancedSecuritySection(
                             if (app.requestedDangerousPermissions.isNotEmpty()) add("${app.requestedDangerousPermissions.size} sensitive permissions")
                         }
                         Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text(app.appName, style = MaterialTheme.typography.titleSmall)
-                                Text(app.packageName, style = MaterialTheme.typography.bodySmall)
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(app.appName, style = MaterialTheme.typography.titleSmall)
+                                        Text(app.packageName, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    LoadingTextButton(onClick = {
+                                        expandedAppPackage = if (expandedAppPackage == app.packageName) null else app.packageName
+                                    }) { Text(if (expandedAppPackage == app.packageName) "Hide details" else "Details") }
+                                }
                                 Text(
                                     if (issues.isEmpty()) "No flagged posture signals"
                                     else issues.joinToString(" • "),
                                     color = if (issues.isEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                 )
                                 if (app.targetSdk != null) Text("Target SDK: ${app.targetSdk}")
+                                if (expandedAppPackage == app.packageName) {
+                                    HorizontalDivider()
+                                    Text("Evidence", style = MaterialTheme.typography.labelLarge)
+                                    app.evidence.forEach { evidence -> Text("• " + evidence, style = MaterialTheme.typography.bodySmall) }
+                                    Text("Recommended actions", style = MaterialTheme.typography.labelLarge)
+                                    app.remediation.forEach { action -> Text("• " + action, style = MaterialTheme.typography.bodySmall) }
+                                    app.versionName?.let { Text("Version: " + it, style = MaterialTheme.typography.bodySmall) }
+                                }
                             }
                         }
                     }
