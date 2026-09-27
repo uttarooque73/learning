@@ -42,7 +42,7 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
             }
             if(info!=null){
                 val label=info.applicationInfo?.loadLabel(context.packageManager)?.toString()?:info.packageName
-                apkReview=SecurityAutopilotEngine.reviewApk(info,label)
+                apkReview=ApkSecurityReviewEngine.review(ApkSecurityReviewInput(info.packageName,label,info.versionName,info.applicationInfo?.targetSdkVersion?:0,((info.applicationInfo?.flags?:0) and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0,if(Build.VERSION.SDK_INT>=31)((info.applicationInfo?.flags?:0) and android.content.pm.ApplicationInfo.FLAG_ALLOW_BACKUP)!=0 else null,if(Build.VERSION.SDK_INT>=23)((info.applicationInfo?.flags?:0) and android.content.pm.ApplicationInfo.FLAG_USES_CLEARTEXT_TRAFFIC)!=0 else null,listOf(info.activities,info.services,info.receivers,info.providers).sumOf{it.orEmpty().count{c->c.exported}},info.requestedPermissions?.toList().orEmpty()))
             }
             apkFile.delete()
         }
