@@ -98,6 +98,7 @@ import com.uttarooque73.netguard.features.network.DnsGatewayAuditResult
 import com.uttarooque73.netguard.features.wifi.WifiObservation
 import com.uttarooque73.netguard.features.wifi.WifiTrustEngine
 import com.uttarooque73.netguard.features.wifi.WifiTrustResult
+import com.uttarooque73.netguard.features.wifi.WifiTrustStatus
 import com.uttarooque73.netguard.features.wifi.WifiObservationStore
 import com.uttarooque73.netguard.features.web.TlsHttpSecurityAudit
 import com.uttarooque73.netguard.features.web.TlsAuditResult
@@ -1795,26 +1796,72 @@ private fun AdministrationSection(
 
 @Composable
 private fun WifiTrustPage(result: WifiTrustResult?, onObserve: () -> Unit) {
+    val status = result?.status
+    val statusText = when (status) {
+        WifiTrustStatus.KNOWN -> "Known network"
+        WifiTrustStatus.CHANGED -> "Network identity changed"
+        WifiTrustStatus.UNKNOWN, null -> "Baseline not established"
+    }
+    val statusColor = when (status) {
+        WifiTrustStatus.KNOWN -> MaterialTheme.colorScheme.primary
+        WifiTrustStatus.CHANGED -> MaterialTheme.colorScheme.error
+        WifiTrustStatus.UNKNOWN, null -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Wi-Fi Trust", style = MaterialTheme.typography.headlineSmall)
-        Text("Track changes in the observed Wi-Fi identity.")
+        Text(
+            "Compare the current Wi-Fi identity with the last local observation. A change is a signal to investigate, not proof of a rogue access point.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (status == WifiTrustStatus.CHANGED)
+                    MaterialTheme.colorScheme.errorContainer
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(statusText, style = MaterialTheme.typography.titleLarge, color = statusColor)
+                Text(
+                    when (status) {
+                        WifiTrustStatus.KNOWN -> "No tracked SSID, BSSID, gateway, or security-mode changes were detected."
+                        WifiTrustStatus.CHANGED -> "One or more tracked network identity values changed since the previous observation."
+                        WifiTrustStatus.UNKNOWN, null -> "Run the first observation to establish the local comparison baseline."
+                    }
+                )
+                result?.evidence?.let {
+                    Text("Observed change", style = MaterialTheme.typography.titleSmall)
+                    Text(it)
+                }
+                LoadingButton(onClick = onObserve) {
+                    Text(if (result == null) "Create Wi-Fi baseline" else "Recheck current network")
+                }
+            }
+        }
+
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Status: " + (result?.status ?: "NOT AUDITED"), style = MaterialTheme.typography.titleMedium)
-                Text(
-                    result?.evidence
-                        ?: "No observation yet. Observe the current Wi-Fi identity to create a baseline."
-                )
-                LoadingButton(onClick = onObserve) {
-                    Text(if (result == null) "Observe current Wi-Fi" else "Recheck Wi-Fi")
-                }
-                result?.remediation?.takeIf { it.isNotEmpty() }?.let { guidance ->
-                    Text("Guidance", style = MaterialTheme.typography.titleSmall)
+                Text("What to verify", style = MaterialTheme.typography.titleMedium)
+                Text("• SSID matches the network you intended to join.")
+                Text("• BSSID changes are expected when access points or mesh nodes change.")
+                Text("• Gateway changes are expected only when the network topology changes.")
+                Text("• A security-mode downgrade should be investigated before sensitive activity.")
+            }
+        }
+
+        result?.remediation?.takeIf { it.isNotEmpty() }?.let { guidance ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Recommended actions", style = MaterialTheme.typography.titleMedium)
                     guidance.forEachIndexed { index, item ->
                         Text((index + 1).toString() + ". " + item)
                     }
