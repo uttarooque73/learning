@@ -106,7 +106,7 @@ fun SecurityAutopilotCard(network:NetworkInfo?,services:List<DiscoveredService>,
                 if(review.reasons.isEmpty())Text("No local manifest risk signals detected.")
                 else review.reasons.forEach{Text("• "+it)}
                 Text("This review is based on APK manifest metadata available to Android; it does not prove the app is malware.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick={apkReview=null}){Text("Close review")}
+                LoadingTextButton(onClick={apkReview=null}){Text("Close review")}
             }
         }
     }
