@@ -43,8 +43,8 @@ fun LoginScreen(
         OutlinedTextField(email, onEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(password, onPasswordChange, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) { Text("Login") }
-        TextButton(onClick = onCreateAccount) { Text("Create account") }
+        LoadingButton(onClick = onLogin, modifier = Modifier.fillMaxWidth()) { Text("Login") }
+        LoadingTextButton(onClick = onCreateAccount) { Text("Create account") }
     }
 }
 
@@ -68,8 +68,8 @@ fun SignUpScreen(
         OutlinedTextField(password, onPasswordChange, label = { Text("Password (8+ characters)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(confirmPassword, onConfirmPasswordChange, label = { Text("Confirm password") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = onSignUp, modifier = Modifier.fillMaxWidth()) { Text("Create account") }
-        TextButton(onClick = onLogin) { Text("Already have an account? Login") }
+        LoadingButton(onClick = onSignUp, modifier = Modifier.fillMaxWidth()) { Text("Create account") }
+        LoadingTextButton(onClick = onLogin) { Text("Already have an account? Login") }
     }
 }
 
@@ -116,7 +116,7 @@ fun ProfileScreen(
         }
         Text("Account: " + profile.email)
         OutlinedTextField(displayName, onDisplayNameChange, label = { Text("Display name") }, modifier = Modifier.fillMaxWidth())
-        Button(onClick = onSelectImage) { Text("Choose profile image") }
+        LoadingButton(onClick = onSelectImage) { Text("Choose profile image") }
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Photo storage", style = MaterialTheme.typography.titleMedium)
@@ -124,8 +124,8 @@ fun ProfileScreen(
             }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
-        TextButton(onClick = onLogout) { Text("Log out") }
+        LoadingButton(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
+        LoadingTextButton(onClick = onLogout) { Text("Log out") }
     }
 }
 
@@ -153,7 +153,7 @@ fun ContactNumbersScreen(
                                 Text(contact.name, style = MaterialTheme.typography.titleSmall)
                                 Text(contact.phoneNumber)
                             }
-                            Button(onClick = { onAddContact(contact) }) { Text("Add") }
+                            LoadingButton(onClick = { onAddContact(contact) }) { Text("Add") }
                         }
                     }
                 }
@@ -164,7 +164,7 @@ fun ContactNumbersScreen(
             savedContacts.forEach { contact ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(contact.name + " — " + contact.phoneNumber, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onRemoveContact(contact.id) }) { Text("Remove") }
+                    LoadingTextButton(onClick = { onRemoveContact(contact.id) }) { Text("Remove") }
                 }
             }
         }
