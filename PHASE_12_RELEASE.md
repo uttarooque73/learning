@@ -17,8 +17,8 @@ Discovery and service auditing already use bounded concurrency and short connect
 - Review runtime permissions on each supported Android release.
 - Verify backup behavior on release builds.
 - Verify cleartext policy against every intended HTTP/TLS code path.
-- Run unit tests and an Android release build in CI.
-- Perform manual testing on physical devices across supported Android versions.
+- Run unit tests, lint, debug APK assembly, and Android release build in CI. The latest main-branch CI run passed all of these checks and uploaded the debug APK.
+- Perform manual testing on physical devices across supported Android versions (the remaining environment-dependent release validation).
 - Review logs to ensure sensitive data is not emitted.
 - Validate report/history storage size and retention limits.
 
