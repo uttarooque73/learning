@@ -1037,6 +1037,12 @@ fun NetGuardApp(
             Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { TextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
             if (selectedScreen == Screen.Profile && userProfile != null) {
                 ProfileScreen(userProfile!!, profileName, selectedProfileImage, authError, onProfileNameChange, onSelectProfileImage, onSaveProfile, onLogout)
+            } else if (selectedScreen == Screen.Contacts) {
+                ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
+            } else if (selectedScreen == Screen.CallProtection) {
+                val roleManager = getSystemService(android.app.role.RoleManager::class.java)
+                val screeningEnabled = roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true
+                CallProtectionScreen(callProtectionLogs, blockedNumbers, ::blockNumber, ::unblockNumber, { callProtectionStore.clearLogs(); refreshCallProtection() }, { requestCallScreeningRole(this@MainActivity) }, screeningEnabled)
             } else Dashboard(
                 modifier = Modifier.padding(padding),
                 networkInfo = networkInfo,
@@ -1174,9 +1180,6 @@ private fun Dashboard(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         when (selectedScreen) {
-            Screen.Profile -> Unit
-            Screen.Contacts -> ContactNumbersScreen(savedContacts, deviceContacts, contactError, ::addContact, ::removeContact)
-            Screen.CallProtection -> CallProtectionScreen(callProtectionLogs, blockedNumbers, ::blockNumber, ::unblockNumber, { callProtectionStore.clearLogs(); refreshCallProtection() }, { requestCallScreeningRole(this@MainActivity) }, android.app.role.RoleManager::class.java.let { getSystemService(it)?.isRoleHeld(android.app.role.RoleManager.ROLE_CALL_SCREENING) == true })
             Screen.Dashboard -> {
                 Text("Network Security Audit", style = MaterialTheme.typography.headlineSmall)
                 Text("Discover → Audit → Remediate → Verify", style = MaterialTheme.typography.bodyLarge)
