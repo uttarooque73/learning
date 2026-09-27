@@ -369,6 +369,7 @@ class MainActivity : FragmentActivity() {
                 onSelectProfileImage = { profileImageLauncher.launch("image/*") },
                 onSaveProfile = ::saveUserProfile,
                 onLogout = ::logoutUser,
+                onCreateAccount = { authenticated = false; showSignUp = true; authError = null },
                 savedContacts = savedContacts,
                 deviceContacts = deviceContacts,
                 contactError = contactError,
@@ -1087,6 +1088,7 @@ fun NetGuardApp(
     onSelectProfileImage: () -> Unit,
     onSaveProfile: () -> Unit,
     onLogout: () -> Unit,
+    onCreateAccount: () -> Unit,
     savedContacts: List<SavedContact>,
     deviceContacts: List<SavedContact>,
     contactError: String?,
@@ -1133,6 +1135,8 @@ fun NetGuardApp(
             Scaffold(topBar = { TopAppBar(title = { Text(screenTitle(selectedScreen)) }, navigationIcon = { LoadingTextButton(onClick = { drawerScope.launch { drawerState.open() } }) { Text("☰") } }) }) { padding ->
             if (selectedScreen == Screen.Profile && userProfile != null) {
                 ProfileScreen(userProfile!!, profileName, selectedProfileImage, authError, onProfileNameChange, onSelectProfileImage, onSaveProfile, onLogout)
+            } else if (selectedScreen == Screen.Profile) {
+                GuestProfileScreen(onCreateAccount, onLogout)
             } else if (selectedScreen == Screen.Contacts) {
                 ContactNumbersScreen(savedContacts, deviceContacts, contactError, onAddContact, onRemoveContact)
             } else if (selectedScreen == Screen.CallProtection) {
