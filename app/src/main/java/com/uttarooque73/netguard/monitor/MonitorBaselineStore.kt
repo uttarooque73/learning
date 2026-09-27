@@ -10,6 +10,8 @@ import org.json.JSONObject
 class MonitorBaselineStore(context: Context) {
     private val preferences = context.getSharedPreferences("netguard_monitor_baseline", Context.MODE_PRIVATE)
 
+    fun isInitialized(): Boolean = preferences.getBoolean("initialized", false)
+
     fun saveNetwork(network: NetworkInfo) {
         val json = JSONObject().apply {
             putOpt("interfaceName", network.interfaceName)
@@ -21,7 +23,7 @@ class MonitorBaselineStore(context: Context) {
             putOpt("bssid", network.bssid)
             putOpt("wifiSecurity", network.wifiSecurity)
         }
-        preferences.edit().putString("network", json.toString()).apply()
+        preferences.edit().putString("network", json.toString()).putBoolean("initialized", true).apply()
     }
 
     fun loadNetwork(): NetworkInfo? {
@@ -42,7 +44,7 @@ class MonitorBaselineStore(context: Context) {
     }
 
     fun saveDevices(devices: List<DiscoveredDevice>) {
-        preferences.edit().putString("devices", JSONArray(devices.map { it.ipAddress }).toString()).apply()
+        preferences.edit().putString("devices", JSONArray(devices.map { it.ipAddress }).toString()).putBoolean("initialized", true).apply()
     }
 
     fun loadDeviceIps(): Set<String> = loadArray("devices")
@@ -60,7 +62,7 @@ class MonitorBaselineStore(context: Context) {
                 }
             )
         }
-        preferences.edit().putString("services", json.toString()).apply()
+        preferences.edit().putString("services", json.toString()).putBoolean("initialized", true).apply()
     }
 
     fun loadServices(): List<DiscoveredService> {
