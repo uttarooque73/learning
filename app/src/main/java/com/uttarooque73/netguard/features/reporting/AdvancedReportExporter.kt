@@ -82,11 +82,24 @@ object AdvancedReportExporter {
     }
 
     fun csv(snapshot: AuditSnapshot): String = buildString {
-        appendLine("finding_id,title,severity,confidence,ip_address,evidence")
-        snapshot.findings.forEach {
-            appendLine(listOf(it.id, it.title, it.severity.name, it.confidence.name, it.ipAddress, it.evidence).joinToString(",") { value ->
-                "\"" + value.replace("\"", "\"\"") + "\""
+        fun row(vararg values: Any?) {
+            appendLine(values.joinToString(",") { value ->
+                val text = value?.toString() ?: ""
+                "\"" + text.replace("\"", "\"\"") + "\""
             })
+        }
+        row("record_type", "id", "title", "severity", "confidence", "ip_address", "status", "evidence")
+        snapshot.findings.forEach {
+            row("finding", it.id, it.title, it.severity.name, it.confidence.name, it.ipAddress, "", it.evidence)
+        }
+        snapshot.remediationRecords.forEach {
+            row("remediation", it.findingId, "", "", "", it.ipAddress, it.status.name, "")
+        }
+        snapshot.verificationResults.forEach {
+            row("verification", it.findingId, "", "", "", it.ipAddress, it.status.name, it.afterEvidence)
+        }
+        snapshot.customPolicyEvaluations.forEach {
+            row("policy", it.policy.id, it.policy.title, "", "", "", if (it.passed) "PASS" else "FAIL", it.evidence)
         }
     }
 
@@ -111,29 +124,27 @@ object AdvancedReportExporter {
         }
         line("NetGuard Security Audit")
         line("Audit: " + snapshot.id)
+        line("Created: " + snapshot.createdAtEpochMs)
+        line("Risk score: " + com.uttarooque73.netguard.audit.RiskCalculator.score(snapshot.findings) + "/100")
         line("Devices: " + snapshot.devices.size + " Services: " + snapshot.services.size)
         line("Findings: " + snapshot.findings.size)
+        line("Remediation records: " + snapshot.remediationRecords.size)
+        line("Verification records: " + snapshot.verificationResults.size)
+        line("Custom policy evaluations: " + snapshot.customPolicyEvaluations.size)
+        snapshot.network?.let {
+            line("Network: " + (it.interfaceName ?: "unknown") + " / " + (it.localAddress ?: "unknown"))
+            line("Gateway: " + (it.gatewayAddress ?: "unknown") + " Subnet: " + (it.subnet ?: "unknown"))
+            line("DNS: " + it.dnsServers.joinToString().ifBlank { "not observed" })
+            line("Wi-Fi security: " + (it.wifiSecurity ?: "unknown"))
+        }
         snapshot.findings.forEach {
-            line(it.severity.name + ": " + it.title)
+            line(it.severity.name + " [" + it.confidence.name + "]: " + it.title)
             line("Asset: " + it.ipAddress)
             line("Evidence: " + it.evidence)
+            line("Remediation: " + it.remediation)
+            line("Verification: " + it.verification)
         }
-        document.finishPage(page)
-        file.outputStream().use { document.writeTo(it) }
-        document.close()
-        return file
-    }
-
-    fun packageAudit(context: Context, snapshot: AuditSnapshot): File {
-        val file = File(context.cacheDir, "netguard-audit-" + snapshot.id + ".zip")
-        ZipOutputStream(file.outputStream()).use { zip ->
-            zip.putNextEntry(ZipEntry("audit.json"))
-            zip.write(json(snapshot).toByteArray(Charsets.UTF_8))
-            zip.closeEntry()
-            zip.putNextEntry(ZipEntry("findings.csv"))
-            zip.write(csv(snapshot).toByteArray(Charsets.UTF_8))
-            zip.closeEntry()
+        snapshot.customPolicyEvaluations.forEach {
+            line("Policy " + it.policy.id + ": " + if (it.passed) "PASS" else "FAIL")
+            line(it.policy.title + " — " + it.evidence)
         }
-        return file
-    }
-}
