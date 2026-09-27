@@ -75,10 +75,12 @@ jobs:
           STORE: ${{ secrets.NETGUARD_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.NETGUARD_KEYSTORE_PASSWORD }}
           ALIAS: ${{ secrets.NETGUARD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NETGUARD_KEY_PASSWORD }}
         run: |
           test -n "$STORE"
           test -n "$STORE_PASSWORD"
           test -n "$ALIAS"
+          test -n "$KEY_PASSWORD"
           echo "All release signing secrets are present."
 
       - name: Decode release keystore
@@ -94,6 +96,7 @@ jobs:
           NETGUARD_KEYSTORE_PATH: release.keystore
           NETGUARD_KEYSTORE_PASSWORD: ${{ secrets.NETGUARD_KEYSTORE_PASSWORD }}
           NETGUARD_KEY_ALIAS: ${{ secrets.NETGUARD_KEY_ALIAS }}
+          NETGUARD_KEY_PASSWORD: ${{ secrets.NETGUARD_KEY_PASSWORD }}
         run: gradle assembleRelease --no-daemon
 
       - name: Verify release APK signing
