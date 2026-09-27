@@ -104,6 +104,9 @@ import com.uttarooque73.netguard.features.policy.SecurityPolicyEngine
 import com.uttarooque73.netguard.features.policy.SecurityPolicyProfiles
 import com.uttarooque73.netguard.features.learning.SecurityLearningMode
 import com.uttarooque73.netguard.features.command.SecurityCommandCenterScreen
+import com.uttarooque73.netguard.features.command.AuditProfile
+import com.uttarooque73.netguard.features.command.AuditProfilePlanner
+import com.uttarooque73.netguard.features.reporting.InvestigationPackageExporter
 import com.uttarooque73.netguard.features.reporting.AdvancedReportExporter
 import com.uttarooque73.netguard.features.reporting.AuditPackageImporter
 import com.uttarooque73.netguard.features.intelligence.NetworkTopology
@@ -292,7 +295,9 @@ class MainActivity : FragmentActivity() {
                 dnsSecurity = dnsSecurity,
                 vulnerabilityCandidates = vulnerabilityCandidates,
                 riskTrend = riskTrend,
-                customPolicyEvaluations = customPolicyEvaluations
+                customPolicyEvaluations = customPolicyEvaluations,
+                onRunCommandCenterProfile = ::runCommandCenterProfile,
+                onExportInvestigation = ::exportInvestigationPackage
                 )
             }
         }
@@ -455,6 +460,72 @@ class MainActivity : FragmentActivity() {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             },
             "Share NetGuard report"
+        ))
+    }
+
+    private fun runCommandCenterProfile(profile: AuditProfile) {
+        val info = networkInfo ?: return
+        val localIp = info.localAddress ?: return
+        val prefix = info.subnet?.substringAfter('/')?.toIntOrNull() ?: return
+        val plan = AuditProfilePlanner.plan(profile)
+        lifecycleScope.launch {
+            isDiscovering = true
+            discoveryError = null
+            runCatching {
+                val discovered = DeviceDiscovery().discover(localIp, prefix).take(plan.maxDevices)
+                devices = discovered
+                inventoryStore.saveDevices(discovered)
+                val selected = if (profile == AuditProfile.QUICK) {
+                    discovered.take(plan.maxServiceAudits)
+                } else {
+                    discovered.take(plan.maxServiceAudits)
+                }
+                val audited = selected.flatMap { device ->
+                    ServiceAudit().audit(device.ipAddress)
+                }
+                services = (services.filter { service -> selected.none { it.ipAddress == service.ipAddress } } + audited)
+                serviceStore.save(services)
+                val generated = audited.mapNotNull(ServiceFindingRules::evaluate)
+                findings = findings.filter { finding -> selected.none { it.ipAddress == finding.ipAddress } } + generated
+                findingStore.save(findings)
+                recordTimeline(
+                    "command-center",
+                    "Audit profile executed",
+                    plan.profile.label + ": " + discovered.size + " devices, " + audited.size + " services"
+                )
+            }.onFailure {
+                discoveryError = it.message ?: "Command Center audit profile failed."
+            }
+            isDiscovering = false
+        }
+    }
+
+    private fun exportInvestigationPackage() {
+        val snapshots = auditHistory.takeLast(3).mapNotNull { auditHistoryStore.loadSnapshot(it.id) }
+        if (snapshots.isEmpty()) {
+            discoveryError = "Create an audit report first so an investigation package has evidence to export."
+            return
+        }
+        val diff = if (snapshots.size >= 2) {
+            com.uttarooque73.netguard.features.command.InvestigationDiffEngine.compare(
+                snapshots[snapshots.size - 2], snapshots.last()
+            )
+        } else null
+        val file = InvestigationPackageExporter.export(
+            this,
+            snapshots,
+            diff,
+            timelineEvents.map { it.createdAtEpochMs.toString() + " — " + it.category + " — " + it.title + " — " + it.detail }
+        )
+        recordTimeline("report", "Investigation package exported", "Exported " + snapshots.size + " snapshot(s)")
+        val uri = FileProvider.getUriForFile(this, "com.uttarooque73.netguard.fileprovider", file)
+        startActivity(Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/zip"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            },
+            "Share NetGuard investigation package"
         ))
     }
 
@@ -819,7 +890,9 @@ fun NetGuardApp(
     dnsSecurity: DnsSecurityResult?,
     vulnerabilityCandidates: List<VulnerabilityCandidate>,
     riskTrend: List<RiskTrendPoint>,
-    customPolicyEvaluations: List<CustomPolicyEvaluation>
+    customPolicyEvaluations: List<CustomPolicyEvaluation>,
+    onRunCommandCenterProfile: (AuditProfile) -> Unit,
+    onExportInvestigation: () -> Unit
 ) {
     MaterialTheme {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -1026,7 +1099,7 @@ private fun Dashboard(
                     }
                 }
             }
-            Screen.CommandCenter -> SecurityCommandCenterScreen(networkInfo, devices, services, findings, monitorEvents, wifiTrustResult, { onExportReport("zip") })
+            Screen.CommandCenter -> SecurityCommandCenterScreen(networkInfo, devices, services, findings, monitorEvents, wifiTrustResult, onExportInvestigation, onRunCommandCenterProfile)
             Screen.Network -> NetworkScreen(networkInfo)
             Screen.Devices -> DevicesScreen(devices, isDiscovering, services, auditingIp, onAuditDevice, findings, onSelectFinding)
             Screen.Services -> ServicesFeatureScreen(services)
