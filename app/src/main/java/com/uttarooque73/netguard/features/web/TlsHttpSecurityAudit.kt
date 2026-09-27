@@ -112,6 +112,12 @@ object TlsHttpSecurityAudit {
                 .filterKeys { it != null }
                 .mapKeys { it.key!!.trim().lowercase() }
                 .mapValues { it.value.joinToString(", ") }
+            val setCookies = connection.headerFields.entries
+                .filter { it.key?.equals("set-cookie", ignoreCase = true) == true }
+                .flatMap { it.value.orEmpty() }
+            val insecureCookies = setCookies.count { !it.contains("; Secure", ignoreCase = true) }
+            val missingHttpOnly = setCookies.count { !it.contains("; HttpOnly", ignoreCase = true) }
+            val missingSameSite = setCookies.count { !it.contains("SameSite=", ignoreCase = true) }
             val httpsRedirect = location?.let {
                 runCatching { URI(it).scheme.equals("https", ignoreCase = true) }.getOrDefault(false)
             } ?: false
@@ -126,7 +132,11 @@ object TlsHttpSecurityAudit {
                     "HSTS: " + (headers["strict-transport-security"] ?: "not observed"),
                     "CSP: " + (headers["content-security-policy"] ?: "not observed"),
                     "X-Content-Type-Options: " + (headers["x-content-type-options"] ?: "not observed"),
-                    "Referrer-Policy: " + (headers["referrer-policy"] ?: "not observed")
+                    "Referrer-Policy: " + (headers["referrer-policy"] ?: "not observed"),
+                    "Set-Cookie headers observed: " + setCookies.size,
+                    "Cookies without Secure attribute: " + insecureCookies,
+                    "Cookies without HttpOnly attribute: " + missingHttpOnly,
+                    "Cookies without SameSite attribute: " + missingSameSite
                 ),
                 remediation = listOf(
                     "Redirect HTTP traffic to HTTPS.",
