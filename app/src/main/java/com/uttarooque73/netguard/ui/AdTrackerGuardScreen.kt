@@ -14,6 +14,7 @@ import com.uttarooque73.netguard.vpn.NetGuardVpnService
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.uttarooque73.netguard.features.adguard.*
 
 @Composable
@@ -24,12 +25,18 @@ fun AdTrackerGuardScreen(){
     var rules by remember{mutableStateOf(store.rules())}
     var stats by remember{mutableStateOf(store.stats())}
     var vpnRunning by remember{mutableStateOf(NetGuardVpnService.isRunning)}
+    LaunchedEffect(Unit) {
+        while (true) {
+            vpnRunning = NetGuardVpnService.isRunning
+            enabled = store.enabled()
+            stats = store.stats()
+            delay(1000)
+        }
+    }
     val vpnPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             ContextCompat.startForegroundService(context, Intent(context, NetGuardVpnService::class.java))
-            store.setEnabled(true)
-            enabled = true
-            vpnRunning = true
+            vpnRunning = NetGuardVpnService.isRunning
         }
     }
     fun requestVpn() {
@@ -37,9 +44,7 @@ fun AdTrackerGuardScreen(){
         if (intent != null) vpnPermissionLauncher.launch(intent)
         else {
             ContextCompat.startForegroundService(context, Intent(context, NetGuardVpnService::class.java))
-            store.setEnabled(true)
-            enabled = true
-            vpnRunning = true
+            vpnRunning = NetGuardVpnService.isRunning
         }
     }
     fun stopVpn() {
@@ -53,7 +58,7 @@ fun AdTrackerGuardScreen(){
         Text("One control center for advertising and common tracking domains across your device. Blocking requires the local VPN/DNS engine to be active.",color=MaterialTheme.colorScheme.onSurfaceVariant)
         Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text(if(vpnRunning)"Protection active" else "Protection inactive",style=MaterialTheme.typography.titleMedium)
-            Text(if(vpnRunning) "Local VPN is filtering DNS requests against your enabled rules." else "Start the local VPN to activate domain filtering.")
+            Text(if(vpnRunning) "Local VPN is filtering IPv4 and IPv6 DNS requests against your enabled rules." else "Start the local VPN to activate domain filtering.")
             Text("Rules: "+rules.count{it.enabled}+" enabled")
             if (vpnRunning) {
                 LoadingButton(onClick={::stopVpn}){Text("Stop protection")}
