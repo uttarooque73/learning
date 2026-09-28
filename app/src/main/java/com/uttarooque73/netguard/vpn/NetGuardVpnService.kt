@@ -40,16 +40,24 @@ class NetGuardVpnService : VpnService() {
     }
 
     private fun startVpn() {
-        vpnInterface = Builder()
-            .setSession("NetGuard DNS Protection")
-            .setMtu(1500)
-            .addAddress(VPN_ADDRESS, 32)
-            // Capture DNS traffic directed at the local synthetic resolver.
-            .addRoute(DNS_ADDRESS, 32)
-            .addDnsServer(DNS_ADDRESS)
-            .establish()
+        val established = runCatching {
+            Builder()
+                .setSession("NetGuard DNS Protection")
+                .setMtu(1500)
+                .addAddress(VPN_ADDRESS, 32)
+                .addAddress(VPN6_ADDRESS, 128)
+                .addRoute(DNS_ADDRESS, 32)
+                .addRoute(DNS6_ADDRESS, 128)
+                .addDnsServer(DNS_ADDRESS)
+                .addDnsServer(DNS6_ADDRESS)
+                .establish()
+        }.getOrNull()
 
-        val descriptor = vpnInterface ?: return
+        vpnInterface = established
+        val descriptor = established ?: run {
+            isRunning = false
+            return
+        }
         worker = thread(name = "NetGuardDnsVpn") {
             runLoop(descriptor)
         }
@@ -65,13 +73,21 @@ class NetGuardVpnService : VpnService() {
             while (!Thread.currentThread().isInterrupted) {
                 val length = input.read(packet)
                 if (length <= 0) continue
-                handleIpv4Dns(packet, length, output)
+                handleDnsPacket(packet, length, output)
             }
         } catch (_: Exception) {
             // The interface was closed or the service is stopping.
         } finally {
             try { input.close() } catch (_: Exception) {}
             try { output.close() } catch (_: Exception) {}
+        }
+    }
+
+    private fun handleDnsPacket(packet: ByteArray, length: Int, output: FileOutputStream) {
+        if (length > 0 && ((packet[0].toInt() ushr 4) and 0x0f) == 6) {
+            handleIpv6Dns(packet, length, output)
+        } else {
+            handleIpv4Dns(packet, length, output)
         }
     }
 
@@ -121,8 +137,7 @@ class NetGuardVpnService : VpnService() {
             DatagramSocket().use { socket ->
                 protect(socket)
                 socket.soTimeout = 2500
-                val upstream = InetAddress.getByName("1.1.1.1")
-                socket.send(DatagramPacket(query, query.size, upstream, 53))
+                socket.send(DatagramPacket(query, query.size, IPV4_UPSTREAM, 53))
                 val buffer = ByteArray(4096)
                 val response = DatagramPacket(buffer, buffer.size)
                 socket.receive(response)
@@ -285,7 +300,12 @@ class NetGuardVpnService : VpnService() {
         private const val NOTIFICATION_ID = 9001
         private const val VPN_ADDRESS = "10.10.0.2"
         private const val DNS_ADDRESS = "10.10.0.1"
+        private const val VPN6_ADDRESS = "fd00:1::2"
+        private const val DNS6_ADDRESS = "fd00:1::1"
         private val VPN_BYTES = byteArrayOf(10, 10, 0, 1)
+        private val VPN6_BYTES = InetAddress.getByName(DNS6_ADDRESS).address
+        private val IPV4_UPSTREAM = InetAddress.getByName("1.1.1.1")
+        private val IPV6_UPSTREAM = InetAddress.getByName("2606:4700:4700::1111")
         @Volatile var isRunning: Boolean = false
             private set
     }
