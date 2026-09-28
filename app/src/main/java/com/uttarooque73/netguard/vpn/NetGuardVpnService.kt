@@ -55,12 +55,14 @@ class NetGuardVpnService : VpnService() {
 
         vpnInterface = established
         val descriptor = established ?: run {
+            store.setEnabled(false)
             isRunning = false
             return
         }
         worker = thread(name = "NetGuardDnsVpn") {
             runLoop(descriptor)
         }
+        store.setEnabled(true)
         isRunning = true
     }
 
