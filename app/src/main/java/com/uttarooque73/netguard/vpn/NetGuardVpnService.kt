@@ -228,6 +228,38 @@ class NetGuardVpnService : VpnService() {
         return result
     }
 
+    private fun buildUdpIpv6Response(
+        sourceIp: ByteArray,
+        destinationIp: ByteArray,
+        sourcePort: Int,
+        destinationPort: Int,
+        payload: ByteArray
+    ): ByteArray {
+        val udpLength = 8 + payload.size
+        val result = ByteArray(40 + udpLength)
+        result[0] = 0x60
+        putU16(result, 4, udpLength)
+        result[6] = 17
+        result[7] = 64
+        System.arraycopy(sourceIp, 0, result, 8, 16)
+        System.arraycopy(destinationIp, 0, result, 24, 16)
+
+        putU16(result, 40, sourcePort)
+        putU16(result, 42, destinationPort)
+        putU16(result, 44, udpLength)
+        putU16(result, 46, 0)
+        System.arraycopy(payload, 0, result, 48, payload.size)
+
+        val pseudo = ByteArray(40 + udpLength)
+        System.arraycopy(sourceIp, 0, pseudo, 0, 16)
+        System.arraycopy(destinationIp, 0, pseudo, 16, 16)
+        putU16(pseudo, 34, udpLength)
+        pseudo[39] = 17
+        System.arraycopy(result, 40, pseudo, 40, udpLength)
+        putU16(result, 46, checksum(pseudo, 0, pseudo.size))
+        return result
+    }
+
     private fun checksum(data: ByteArray, offset: Int, length: Int): Int {
         var sum = 0L
         var i = offset
