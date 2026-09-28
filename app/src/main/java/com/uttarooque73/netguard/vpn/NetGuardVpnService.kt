@@ -146,6 +146,20 @@ class NetGuardVpnService : VpnService() {
         }.getOrNull()
     }
 
+    private fun forwardDns(query: ByteArray, upstream: InetAddress): ByteArray? {
+        return runCatching {
+            DatagramSocket().use { socket ->
+                protect(socket)
+                socket.soTimeout = 2500
+                socket.send(DatagramPacket(query, query.size, upstream, 53))
+                val buffer = ByteArray(4096)
+                val response = DatagramPacket(buffer, buffer.size)
+                socket.receive(response)
+                response.data.copyOf(response.length)
+            }
+        }.getOrNull()
+    }
+
     private fun readDnsQuestionName(dns: ByteArray): String? {
         if (dns.size < 12) return null
         var offset = 12
